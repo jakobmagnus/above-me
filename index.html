@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flights Above Me</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <button class="back-btn"><i class="fas fa-arrow-left"></i></button>
+            <h1>Flights</h1>
+            <button class="search-btn"><i class="fas fa-search"></i></button>
+        </header>
+
+        <div class="tabs">
+            <button class="tab active">List</button>
+            <button class="tab">Map</button>
+        </div>
+
+        <div id="flight-list" class="flight-list">
+            <div class="loading">Locating planes above you...</div>
+        </div>
+    </div>
+    
+    <!-- Template for a single flight card -->
+    <template id="flight-card-template">
+        <div class="flight-card">
+            <div class="card-header">
+                <div class="airline-info">
+                    <i class="fas fa-plane"></i>
+                    <span class="flight-number"></span>
+                </div>
+                <div class="tags">
+                    <span class="tag reg-number"></span>
+                </div>
+            </div>
+            
+            <div class="route-info">
+                <div class="city-col">
+                    <span class="city-name origin-city"></span>
+                    <span class="airport-code origin-code"></span>
+                </div>
+                
+                <div class="flight-path">
+                    <div class="dot start"></div>
+                    <div class="line">
+                        <i class="fas fa-plane plane-icon"></i>
+                    </div>
+                    <div class="dot end"></div>
+                </div>
+                
+                <div class="city-col right-align">
+                    <span class="city-name dest-city"></span>
+                    <span class="airport-code dest-code"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+</html>
