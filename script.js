@@ -35,7 +35,10 @@ function setupTabs() {
                 FLIGHT_LIST.classList.add("hidden");
                 MAP_VIEW.classList.remove("hidden");
                 // Resize map when it becomes visible to prevent gray tiles
-                if (map) map.invalidateSize();
+                // Added a short timeout to ensure the DOM is ready
+                setTimeout(() => {
+                    if (map) map.invalidateSize();
+                }, 100);
             }
         });
     });
@@ -99,6 +102,14 @@ async function fetchFlights(bounds) {
 function initMap(lat, lon) {
     if (map) return; // Already initialized
 
+    // Inject custom styles for clean plane markers
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .plane-marker { background: transparent !important; border: none !important; }
+        .plane-wrapper { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+    `;
+    document.head.appendChild(style);
+
     // Create map
     map = L.map('map-view').setView([lat, lon], 9);
 
@@ -126,21 +137,30 @@ function updateMapMarkers(flights) {
     markers = [];
 
     flights.forEach(flight => {
-        if (flight.lat && flight.lon) {
+        // Robust check for different API property names (lat vs latitude, track vs heading)
+        const lat = flight.lat || flight.latitude;
+        const lon = flight.lon || flight.longitude;
+        const heading = flight.track || flight.heading || 0;
+
+        if (lat && lon) {
             const flightNum = flight.callsign || flight.flight_number || "Flight";
             
             // Create plane icon (rotated)
-            const htmlIcon = `<i class="fas fa-plane" style="transform: rotate(${flight.track || 0}deg); color: #ffa500; font-size: 20px; text-shadow: 0 0 5px #000;"></i>`;
+            // Using a wrapper to handle rotation cleanly
+            const htmlIcon = `
+                <div class="plane-wrapper" style="transform: rotate(${heading}deg);">
+                    <i class="fas fa-plane" style="color: #ffa500; font-size: 20px; text-shadow: 0 0 4px #000;"></i>
+                </div>`;
             
             const icon = L.divIcon({
                 html: htmlIcon,
                 className: 'plane-marker',
-                iconSize: [20, 20],
-                iconAnchor: [10, 10]
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
             });
 
-            const marker = L.marker([flight.lat, flight.lon], { icon: icon })
-                .bindPopup(`<b>${flightNum}</b><br>${flight.orig_iata || '?'} -> ${flight.dest_iata || '?'}`)
+            const marker = L.marker([lat, lon], { icon: icon })
+                .bindPopup(`<b>${flightNum}</b><br>${flight.orig_iata || flight.origin_airport_iata || '?'} -> ${flight.dest_iata || flight.destination_airport_iata || '?'}`)
                 .addTo(map);
             
             markers.push(marker);
