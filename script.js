@@ -1,16 +1,44 @@
 const FLIGHT_LIST = document.getElementById("flight-list");
+const MAP_VIEW = document.getElementById("map-view"); // New reference
+const TABS = document.querySelectorAll(".tab"); // New reference
 const TEMPLATE = document.getElementById("flight-card-template");
 
 // Radius in degrees (approximation)
 // 1 degree latitude ~ 111km. 20km ~ 0.18 degrees.
 const BOUNDS_OFFSET = 0.2; 
 
+let map = null;
+let markers = [];
+let userLat, userLon;
+
 function init() {
+    setupTabs(); // Initialize tabs
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
     } else {
         renderError("Geolocation is not supported by this browser.");
     }
+}
+
+function setupTabs() {
+    TABS.forEach((tab, index) => {
+        tab.addEventListener("click", () => {
+            // Remove active from all
+            TABS.forEach(t => t.classList.remove("active"));
+            // Add active to clicked
+            tab.classList.add("active");
+
+            if (tab.innerText === "List") {
+                FLIGHT_LIST.classList.remove("hidden");
+                MAP_VIEW.classList.add("hidden");
+            } else {
+                FLIGHT_LIST.classList.add("hidden");
+                MAP_VIEW.classList.remove("hidden");
+                // Resize map when it becomes visible to prevent gray tiles
+                if (map) map.invalidateSize();
+            }
+        });
+    });
 }
 
 function renderError(msg) {
@@ -20,6 +48,12 @@ function renderError(msg) {
 async function successLoc(position) {
     const lat = position.coords.latitude;
     const lon = position.coords.longitude;
+    
+    userLat = lat;
+    userLon = lon;
+
+    // Initialize Map
+    initMap(lat, lon);
 
     // Calculate bounds: south, north, west, east (lat1, lat2, lon1, lon2) for FR24
     // Note: The API usually expects bounds.
@@ -62,9 +96,65 @@ async function fetchFlights(bounds) {
     }
 }
 
+function initMap(lat, lon) {
+    if (map) return; // Already initialized
+
+    // Create map
+    map = L.map('map-view').setView([lat, lon], 9);
+
+    // Add Dark Mode Tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+
+    // Add user marker
+    L.circleMarker([lat, lon], {
+        color: '#3388ff',
+        fillColor: '#3388ff',
+        fillOpacity: 0.5,
+        radius: 8
+    }).addTo(map).bindPopup("You are here");
+}
+
+function updateMapMarkers(flights) {
+    if (!map) return;
+
+    // Clear old markers
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    flights.forEach(flight => {
+        if (flight.lat && flight.lon) {
+            const flightNum = flight.callsign || flight.flight_number || "Flight";
+            
+            // Create plane icon (rotated)
+            const htmlIcon = `<i class="fas fa-plane" style="transform: rotate(${flight.track || 0}deg); color: #ffa500; font-size: 20px; text-shadow: 0 0 5px #000;"></i>`;
+            
+            const icon = L.divIcon({
+                html: htmlIcon,
+                className: 'plane-marker',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const marker = L.marker([flight.lat, flight.lon], { icon: icon })
+                .bindPopup(`<b>${flightNum}</b><br>${flight.orig_iata || '?'} -> ${flight.dest_iata || '?'}`)
+                .addTo(map);
+            
+            markers.push(marker);
+        }
+    });
+}
+
 function renderFlights(data) {
     FLIGHT_LIST.innerHTML = "";
     
+    // Update Map
+    updateMapMarkers(data);
+    
+    // The API response structure varies, assuming standard list here.
     if (!data || data.length === 0) {
         renderError("No flights found nearby.");
         return;

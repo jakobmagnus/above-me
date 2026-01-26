@@ -79,6 +79,19 @@ button {
     margin-top: 50px;
 }
 
+/* Map specific styles */
+.map-view {
+    height: 60vh;
+    width: 100%;
+    border-radius: 16px;
+    background-color: #1e1e1e;
+    z-index: 1;
+}
+
+.hidden {
+    display: none !important;
+}
+
 /* Flight Card Styles */
 .flight-card {
     background-color: var(--card-bg);

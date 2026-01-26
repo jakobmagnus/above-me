@@ -6,6 +6,8 @@
     <title>Flights Above Me</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRS9BMY=" crossorigin="" />
 </head>
 <body>
     <div class="app-container">
@@ -23,6 +25,9 @@
         <div id="flight-list" class="flight-list">
             <div class="loading">Locating planes above you...</div>
         </div>
+
+        <!-- Map Container -->
+        <div id="map-view" class="map-view hidden"></div>
     </div>
     
     <!-- Template for a single flight card -->
@@ -60,6 +65,8 @@
         </div>
     </template>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="script.js"></script>
 </body>
 </html>
