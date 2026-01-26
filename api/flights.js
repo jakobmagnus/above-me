@@ -15,6 +15,7 @@ export default async function handler(request, response) {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
+                'Accept-Version': 'v1', // Added required header based on error message
                 'Authorization': `Bearer ${API_KEY}`
             }
         });
