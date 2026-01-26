@@ -6,8 +6,9 @@ export default async function handler(request, response) {
     }
 
     const API_KEY = "019bfae7-9f78-7394-af38-11798d2236ca|KpVocqDzypbJYfF8W2kAA0AeViTEixREzUkeOst85a0afd01";
-    // CHANGED: Use the correct v1 endpoint for live flights
-    const url = `https://fr24api.flightradar24.com/v1/live-flights?bounds=${bounds}`;
+    
+    // CHANGED: Fixed URL. Reverting to the standard endpoint which is known to work.
+    const url = `https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds=${bounds}`;
 
     try {
         const frResponse = await fetch(url, {
@@ -19,7 +20,6 @@ export default async function handler(request, response) {
         });
 
         if (!frResponse.ok) {
-            // Get text to see why it failed (e.g. "Uninstall" or "Invalid Key")
             const errText = await frResponse.text();
             console.error('Upstream API Error:', frResponse.status, errText);
             throw new Error(`Upstream API Error: ${frResponse.status} - ${errText}`);
