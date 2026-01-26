@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = 3000;
 
-// Serve static files (HTML, CSS, JS) from the current directory
+// Serve static files (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
 // Internal API endpoint to proxy requests to Flightradar24
@@ -20,7 +20,8 @@ app.get('/api/flights', async (req, res) => {
     }
 
     const API_KEY = "019bfae7-9f78-7394-af38-11798d2236ca|KpVocqDzypbJYfF8W2kAA0AeViTEixREzUkeOst85a0afd01";
-    // Using the 'full' endpoint as configured in your previous steps
+    
+    // Using the 'full' endpoint as established in your Vercel deployment
     const url = `https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds=${bounds}`;
 
     try {
@@ -28,12 +29,14 @@ app.get('/api/flights', async (req, res) => {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
+                'Accept-Version': 'v1', // Required header based on previous errors
                 'Authorization': `Bearer ${API_KEY}`
             }
         });
 
         if (!frResponse.ok) {
-            throw new Error(`Upstream API Error: ${frResponse.status}`);
+            const errText = await frResponse.text();
+            throw new Error(`Upstream API Error: ${frResponse.status} - ${errText}`);
         }
 
         const data = await frResponse.json();

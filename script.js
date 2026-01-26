@@ -1,18 +1,17 @@
 const FLIGHT_LIST = document.getElementById("flight-list");
-const MAP_VIEW = document.getElementById("map-view"); // New reference
-const TABS = document.querySelectorAll(".tab"); // New reference
+const MAP_VIEW = document.getElementById("map-view");
+const TABS = document.querySelectorAll(".tab");
 const TEMPLATE = document.getElementById("flight-card-template");
 
-// Radius in degrees (approximation)
-// 1 degree latitude ~ 111km. 20km ~ 0.18 degrees.
-const BOUNDS_OFFSET = 0.2; 
+const BOUNDS_OFFSET = 0.5;
 
 let map = null;
 let markers = [];
 let userLat, userLon;
+let currentFlights = []; // Cache to store flights if map isn't ready
 
 function init() {
-    setupTabs(); // Initialize tabs
+    setupTabs();
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
     } else {
@@ -21,11 +20,9 @@ function init() {
 }
 
 function setupTabs() {
-    TABS.forEach((tab, index) => {
+    TABS.forEach((tab) => {
         tab.addEventListener("click", () => {
-            // Remove active from all
             TABS.forEach(t => t.classList.remove("active"));
-            // Add active to clicked
             tab.classList.add("active");
 
             if (tab.innerText === "List") {
@@ -34,64 +31,69 @@ function setupTabs() {
             } else {
                 FLIGHT_LIST.classList.add("hidden");
                 MAP_VIEW.classList.remove("hidden");
-                // Resize map when it becomes visible to prevent gray tiles
-                // Added a short timeout to ensure the DOM is ready
-                setTimeout(() => {
-                    if (map) map.invalidateSize();
-                }, 100);
+                
+                // LAZY LOAD: Only init map if we have location and it's not created yet
+                if (!map && userLat && userLon) {
+                    initMap(userLat, userLon);
+                } 
+                // If map exists, force a resize recalculation
+                else if (map) {
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        if (userLat && userLon) map.panTo([userLat, userLon]);
+                    }, 100);
+                }
             }
         });
     });
 }
 
 function renderError(msg) {
-    FLIGHT_LIST.innerHTML = `<div class="loading">${msg}</div>`;
-}
-
-async function successLoc(position) {
-    const lat = position.coords.latitude;
-    const lon = position.coords.longitude;
-    
-    userLat = lat;
-    userLon = lon;
-
-    // Initialize Map
-    initMap(lat, lon);
-
-    // Calculate bounds: south, north, west, east (lat1, lat2, lon1, lon2) for FR24
-    // Note: The API usually expects bounds.
-    const bounds = `${lat + BOUNDS_OFFSET},${lat - BOUNDS_OFFSET},${lon - BOUNDS_OFFSET},${lon + BOUNDS_OFFSET}`;
-    
-    fetchFlights(bounds);
+    FLIGHT_LIST.innerHTML = `<div class="loading" style="padding: 20px;">${msg}</div>`;
 }
 
 function errorLoc() {
-    renderError("Unable to retrieve your location.");
+    renderError("Unable to retrieve your location. Please allow location access.");
+}
+
+async function successLoc(position) {
+    userLat = position.coords.latitude;
+    userLon = position.coords.longitude;
+
+    // CHANGED: Do NOT init map here if it is hidden. 
+    // It will be initialized when the user clicks the "Map" tab.
+    if (!MAP_VIEW.classList.contains("hidden")) {
+        initMap(userLat, userLon);
+    }
+
+    const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
+    fetchFlights(bounds);
 }
 
 async function fetchFlights(bounds) {
     try {
-        // CHANGED: Call our own internal Vercel API endpoint
         const url = `/api/flights?bounds=${bounds}`;
-
         const response = await fetch(url);
 
         if (!response.ok) {
-            // Try to read the error message from JSON body if available
-            let errMsg = response.statusText;
-            try {
-                const errData = await response.json();
-                if (errData.error) errMsg = errData.error;
-            } catch (e) {}
-            
-            throw new Error(`API Error: ${response.status} (${errMsg})`);
+            throw new Error(`API Error: ${response.status}`);
         }
 
         const json = await response.json();
-        // Handle wrapping: API v1 usually returns { data: [...] }
-        const flightData = Array.isArray(json) ? json : (json.data || []);
         
-        renderFlights(flightData);
+        // Robust Data Parsing
+        let flightList = [];
+        if (Array.isArray(json)) {
+            flightList = json;
+        } else if (json.data && Array.isArray(json.data)) {
+            flightList = json.data;
+        } else if (typeof json === 'object') {
+            flightList = Object.values(json).filter(item => 
+                item && typeof item === 'object' && (item.lat || item.latitude || item.flight_id)
+            );
+        }
+
+        renderFlights(flightList);
 
     } catch (error) {
         console.error(error);
@@ -100,56 +102,55 @@ async function fetchFlights(bounds) {
 }
 
 function initMap(lat, lon) {
-    if (map) return; // Already initialized
+    if (map) return;
 
-    // Inject custom styles for clean plane markers
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .plane-marker { background: transparent !important; border: none !important; }
-        .plane-wrapper { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
-    `;
-    document.head.appendChild(style);
+    // Inject styles (ensure this doesn't duplicate if run multiple times, though if(map) prevents it)
+    if (!document.getElementById('map-marker-style')) {
+        const style = document.createElement('style');
+        style.id = 'map-marker-style';
+        style.innerHTML = `
+            .plane-marker { background: transparent !important; border: none !important; }
+            .plane-wrapper { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+        `;
+        document.head.appendChild(style);
+    }
 
-    // Create map
-    map = L.map('map-view').setView([lat, lon], 9);
+    map = L.map('map-view').setView([lat, lon], 10);
 
-    // Add Dark Mode Tiles
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 19
     }).addTo(map);
 
-    // Add user marker
     L.circleMarker([lat, lon], {
         color: '#3388ff',
-        fillColor: '#3388ff',
-        fillOpacity: 0.5,
         radius: 8
-    }).addTo(map).bindPopup("You are here");
+    }).addTo(map).bindPopup("You");
+
+    // If we already fetched flights, display them now
+    if (currentFlights.length > 0) {
+        updateMapMarkers(currentFlights);
+    }
 }
 
 function updateMapMarkers(flights) {
     if (!map) return;
-
-    // Clear old markers
+    
     markers.forEach(m => map.removeLayer(m));
     markers = [];
 
-    flights.forEach(flight => {
-        // Robust check for different API property names (lat vs latitude, track vs heading)
-        const lat = flight.lat || flight.latitude;
-        const lon = flight.lon || flight.longitude;
-        const heading = flight.track || flight.heading || 0;
+    flights.forEach(f => {
+        const lat = f.lat || f.latitude;
+        const lon = f.lon || f.longitude;
+        const heading = f.track || f.heading || 0;
+        const flightNum = f.callsign || f.flight_number || "Flight";
+        const orig = f.orig_iata || f.origin_airport_iata || "?";
+        const dest = f.dest_iata || f.destination_airport_iata || "?";
 
         if (lat && lon) {
-            const flightNum = flight.callsign || flight.flight_number || "Flight";
-            
-            // Create plane icon (rotated)
-            // Using a wrapper to handle rotation cleanly
-            const htmlIcon = `
+             const htmlIcon = `
                 <div class="plane-wrapper" style="transform: rotate(${heading}deg);">
-                    <i class="fas fa-plane" style="color: #ffa500; font-size: 20px; text-shadow: 0 0 4px #000;"></i>
+                    <i class="fas fa-plane" style="color: #ffa500; font-size: 20px; filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));"></i>
                 </div>`;
             
             const icon = L.divIcon({
@@ -159,50 +160,43 @@ function updateMapMarkers(flights) {
                 iconAnchor: [12, 12]
             });
 
-            const marker = L.marker([lat, lon], { icon: icon })
-                .bindPopup(`<b>${flightNum}</b><br>${flight.orig_iata || flight.origin_airport_iata || '?'} -> ${flight.dest_iata || flight.destination_airport_iata || '?'}`)
+            const m = L.marker([lat, lon], { icon: icon })
+                .bindPopup(`<b>${flightNum}</b><br>${orig} to ${dest}`)
                 .addTo(map);
-            
-            markers.push(marker);
+            markers.push(m);
         }
     });
 }
 
 function renderFlights(data) {
+    currentFlights = data || []; // Cache data for map
+    
     FLIGHT_LIST.innerHTML = "";
     
-    // Update Map
-    updateMapMarkers(data);
-    
-    // The API response structure varies, assuming standard list here.
+    // Try updating map (will fail silently if map is null, which is fine)
+    updateMapMarkers(currentFlights);
+
     if (!data || data.length === 0) {
-        renderError("No flights found nearby.");
+        renderError("No flights found in this area.");
         return;
     }
     
     data.forEach(flight => {
         const clone = TEMPLATE.content.cloneNode(true);
         
-        // Map v1 field names. 
-        // Note: Check console.log(flight) in browser if fields appear empty.
-        const flightNum = flight.callsign || flight.flight_number || "N/A";
-        const origin = flight.orig_iata || flight.origin_airport_iata || "---";
+        const num = flight.callsign || flight.flight_number || flight.flight || "N/A";
+        const reg = flight.reg || flight.registration || "";
+        const orig = flight.orig_iata || flight.origin_airport_iata || "---";
         const dest = flight.dest_iata || flight.destination_airport_iata || "---";
-        const reg = flight.reg || flight.registration || "Unknown";
         
-        clone.querySelector(".flight-number").textContent = flightNum;
+        clone.querySelector(".flight-number").textContent = num;
         clone.querySelector(".reg-number").textContent = reg;
-        
-        // Since we don't have a city DB, we might display "Origin" and "Dest" text or leave blank
-        // clone.querySelector(".origin-city").textContent = "Origin"; 
-        clone.querySelector(".origin-code").textContent = origin;
-        
-        // clone.querySelector(".dest-city").textContent = "Dest";
+        clone.querySelector(".origin-code").textContent = orig;
         clone.querySelector(".dest-code").textContent = dest;
 
         FLIGHT_LIST.appendChild(clone);
     });
 }
 
-// Start app
+// Start
 init();

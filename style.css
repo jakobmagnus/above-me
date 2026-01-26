@@ -86,6 +86,13 @@ button {
     border-radius: 16px;
     background-color: #1e1e1e;
     z-index: 1;
+    position: relative; /* Important for absolute positioning inside Leaflet */
+    overflow: hidden; /* Clips the rounded corners */
+}
+
+/* Fix for Leaflet tiles/markers sometimes getting broken by global img styles */
+.leaflet-pane img {
+    max-width: none !important;
 }
 
 .hidden {
