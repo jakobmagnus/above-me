@@ -6,7 +6,8 @@ export default async function handler(request, response) {
     }
 
     const API_KEY = "019bfae7-9f78-7394-af38-11798d2236ca|KpVocqDzypbJYfF8W2kAA0AeViTEixREzUkeOst85a0afd01";
-    const url = `https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds=${bounds}`;
+    // CHANGED: Use the correct v1 endpoint for live flights
+    const url = `https://fr24api.flightradar24.com/v1/live-flights?bounds=${bounds}`;
 
     try {
         const frResponse = await fetch(url, {
@@ -18,16 +19,19 @@ export default async function handler(request, response) {
         });
 
         if (!frResponse.ok) {
-            throw new Error(`Upstream API Error: ${frResponse.status}`);
+            // Get text to see why it failed (e.g. "Uninstall" or "Invalid Key")
+            const errText = await frResponse.text();
+            console.error('Upstream API Error:', frResponse.status, errText);
+            throw new Error(`Upstream API Error: ${frResponse.status} - ${errText}`);
         }
 
         const data = await frResponse.json();
         
-        // Cache the response for 10 seconds to create speedy feeling and reduce API hits
-        response.setHeader('Cache-Control', 's-maxage=10, stale-while-revalidate');
+        response.setHeader('Cache-Control', 's-maxage=5, stale-while-revalidate');
         return response.status(200).json(data);
 
     } catch (error) {
+        console.error("Function Error:", error);
         return response.status(500).json({ error: error.message });
     }
 }

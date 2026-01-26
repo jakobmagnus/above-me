@@ -40,15 +40,24 @@ async function fetchFlights(bounds) {
         const response = await fetch(url);
 
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+            // Try to read the error message from JSON body if available
+            let errMsg = response.statusText;
+            try {
+                const errData = await response.json();
+                if (errData.error) errMsg = errData.error;
+            } catch (e) {}
+            
+            throw new Error(`API Error: ${response.status} (${errMsg})`);
         }
 
-        const data = await response.json();
-        renderFlights(data);
+        const json = await response.json();
+        // Handle wrapping: API v1 usually returns { data: [...] }
+        const flightData = Array.isArray(json) ? json : (json.data || []);
+        
+        renderFlights(flightData);
 
     } catch (error) {
         console.error(error);
-        // Fallback for demo purposes if API fails (CORS or limits)
         renderError(`Failed to load flights: ${error.message}`);
     }
 }
@@ -56,31 +65,20 @@ async function fetchFlights(bounds) {
 function renderFlights(data) {
     FLIGHT_LIST.innerHTML = "";
     
-    // The API response structure varies, assuming standard list here.
-    // data.data is typical for many APIs, provided keys are usually mapped.
-    // If the data is empty:
     if (!data || data.length === 0) {
         renderError("No flights found nearby.");
         return;
     }
-
-    // Sort or filter if needed? Currently just taking the list.
-    // Note: Actual FR24 API responses can be complex (arrays of arrays).
-    // Assuming 'data' contains an array of flight objects for this example.
     
     data.forEach(flight => {
-        // Clone template
         const clone = TEMPLATE.content.cloneNode(true);
         
-        // Populate Data (Safe access with fallback)
-        // Adjust these property names based on the EXACT JSON response you get
+        // Map v1 field names. 
+        // Note: Check console.log(flight) in browser if fields appear empty.
         const flightNum = flight.callsign || flight.flight_number || "N/A";
-        const origin = flight.origin_airport_iata || "---";
-        const dest = flight.destination_airport_iata || "---";
-        const reg = flight.registration || "Unknown";
-        
-        // Origins usually come in detailed objects, simple City names might require a separate lookup
-        // We will use IATA codes for now as shown in your UI (ATH, LCA etc)
+        const origin = flight.orig_iata || flight.origin_airport_iata || "---";
+        const dest = flight.dest_iata || flight.destination_airport_iata || "---";
+        const reg = flight.reg || flight.registration || "Unknown";
         
         clone.querySelector(".flight-number").textContent = flightNum;
         clone.querySelector(".reg-number").textContent = reg;
