@@ -28,6 +28,14 @@ function init() {
 
 function updateLocation() {
     LOCATION_NAME.textContent = "Updating...";
+    
+    // Completely remove and recreate map to fix sizing issues
+    if (map) {
+        map.remove();
+        map = null;
+        markers = [];
+    }
+    
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
     } else {
@@ -123,9 +131,8 @@ async function fetchFlights(bounds) {
 
 function initMap(lat, lon) {
     if (map) {
-        // Update existing map position
         map.setView([lat, lon], 10);
-        map.invalidateSize();
+        map.invalidateSize(true);
         return;
     }
 
@@ -140,11 +147,26 @@ function initMap(lat, lon) {
         document.head.appendChild(style);
     }
 
-    map = L.map('map-view', {
+    const container = document.getElementById('map-view');
+    
+    // Wait until container has actual dimensions
+    const checkAndInit = () => {
+        const rect = container.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            createMap(lat, lon, container);
+        } else {
+            requestAnimationFrame(checkAndInit);
+        }
+    };
+    
+    checkAndInit();
+}
+
+function createMap(lat, lon, container) {
+    map = L.map(container, {
         center: [lat, lon],
         zoom: 10,
-        zoomControl: true,
-        preferCanvas: false
+        zoomControl: true
     });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -157,23 +179,18 @@ function initMap(lat, lon) {
         radius: 8
     }).addTo(map).bindPopup("You");
 
-    // Force resize after tiles load
-    map.whenReady(() => {
+    // Use ResizeObserver to handle container size changes
+    const resizeObserver = new ResizeObserver(() => {
         map.invalidateSize(true);
-        setTimeout(() => {
-            map.invalidateSize(true);
-            map.setView([lat, lon], 10);
-            updateMapMarkers(currentFlights);
-        }, 200);
     });
+    resizeObserver.observe(container);
+
+    // Initial invalidation
+    map.invalidateSize(true);
     
     // Also handle window resize
-    let resizeTimeout;
     window.addEventListener('resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => {
-            if (map) map.invalidateSize(true);
-        }, 100);
+        if (map) map.invalidateSize(true);
     });
 
     // If we already fetched flights, display them now

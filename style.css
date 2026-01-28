@@ -24,22 +24,24 @@ body {
 .app-container {
     width: 100%;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: 55vh 1fr;
+    grid-template-columns: 1fr;
     overflow: hidden;
 }
 
 /* Map Styles */
 .map-view {
+    grid-row: 1;
+    grid-column: 1;
     width: 100%;
-    height: 55vh;
+    height: 100%;
     min-height: 320px;
     background-color: #1e1e1e;
     z-index: 1;
     position: relative;
     display: block;
     overflow: hidden;
-    flex: 0 0 auto;
 }
 
 /* Fix for Leaflet tiles */
@@ -55,11 +57,12 @@ body {
 
 /* Sidebar Styles */
 .sidebar {
+    grid-row: 2;
+    grid-column: 1;
     background-color: var(--bg-color);
     padding: 20px;
     overflow-y: auto;
-    flex: 1;
-    max-height: 50vh;
+    max-height: calc(100vh - 55vh);
 }
 
 .sidebar-header {
@@ -208,21 +211,24 @@ body {
 /* Desktop Layout - side by side */
 @media (min-width: 900px) {
     .app-container {
-        flex-direction: row;
+        grid-template-rows: 100vh;
+        grid-template-columns: 1fr 380px;
     }
 
     .map-view {
+        grid-row: 1;
+        grid-column: 1;
         width: 100%;
         height: 100vh;
         min-height: 100vh;
-        flex: 1 1 auto;
     }
 
     .sidebar {
+        grid-row: 1;
+        grid-column: 2;
         width: 380px;
         height: 100vh;
         max-height: 100vh;
-        flex: 0 0 380px;
         border-left: 1px solid #222;
     }
 
