@@ -14,6 +14,8 @@ let map = null;
 let markers = [];
 let userLat, userLon;
 let currentFlights = [];
+let resizeObserver = null;
+let resizeListener = null;
 
 function init() {
     UPDATE_BTN.addEventListener("click", updateLocation);
@@ -34,6 +36,17 @@ function updateLocation() {
         map.remove();
         map = null;
         markers = [];
+    }
+    
+    // Clean up observers and listeners
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+    
+    if (resizeListener) {
+        window.removeEventListener('resize', resizeListener);
+        resizeListener = null;
     }
     
     if (navigator.geolocation) {
@@ -69,8 +82,18 @@ async function successLoc(position) {
     // Get location name via reverse geocoding
     fetchLocationName(userLat, userLon);
 
-    // Initialize map after a brief delay to allow layout to settle
-    setTimeout(() => initMap(userLat, userLon), 150);
+    // Initialize map and wait for it to be ready
+    await new Promise(resolve => {
+        const checkMapReady = () => {
+            if (map) {
+                resolve();
+            } else {
+                requestAnimationFrame(checkMapReady);
+            }
+        };
+        initMap(userLat, userLon);
+        checkMapReady();
+    });
 
     const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
     fetchFlights(bounds);
@@ -79,7 +102,12 @@ async function successLoc(position) {
 async function fetchLocationName(lat, lon) {
     try {
         const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
+            {
+                headers: {
+                    "User-Agent": "FlightTrackerApp/1.0 (contact: admin@example.com)"
+                }
+            }
         );
         const data = await response.json();
         
@@ -149,13 +177,19 @@ function initMap(lat, lon) {
 
     const container = document.getElementById('map-view');
     
-    // Wait until container has actual dimensions
+    // Wait until container has actual dimensions, but avoid infinite recursion
+    let attempts = 0;
+    const MAX_CHECKS = 120; // ~2 seconds at 60fps
+    
     const checkAndInit = () => {
         const rect = container.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
             createMap(lat, lon, container);
-        } else {
+        } else if (attempts < MAX_CHECKS) {
+            attempts++;
             requestAnimationFrame(checkAndInit);
+        } else {
+            console.error('Map container did not acquire dimensions in time; aborting map initialization.');
         }
     };
     
@@ -180,7 +214,7 @@ function createMap(lat, lon, container) {
     }).addTo(map).bindPopup("You");
 
     // Use ResizeObserver to handle container size changes
-    const resizeObserver = new ResizeObserver(() => {
+    resizeObserver = new ResizeObserver(() => {
         map.invalidateSize(true);
     });
     resizeObserver.observe(container);
@@ -189,9 +223,10 @@ function createMap(lat, lon, container) {
     map.invalidateSize(true);
     
     // Also handle window resize
-    window.addEventListener('resize', () => {
+    resizeListener = () => {
         if (map) map.invalidateSize(true);
-    });
+    };
+    window.addEventListener('resize', resizeListener);
 
     // If we already fetched flights, display them now
     if (currentFlights.length > 0) {
