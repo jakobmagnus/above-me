@@ -11,23 +11,23 @@
 </head>
 <body>
     <div class="app-container">
-        <header>
-            <button class="back-btn"><i class="fas fa-arrow-left"></i></button>
-            <h1>Flights</h1>
-            <button class="search-btn"><i class="fas fa-search"></i></button>
-        </header>
-
-        <div class="tabs">
-            <button class="tab active">List</button>
-            <button class="tab">Map</button>
-        </div>
-
-        <div id="flight-list" class="flight-list">
-            <div class="loading">Locating planes above you...</div>
-        </div>
-
         <!-- Map Container -->
-        <div id="map-view" class="map-view hidden"></div>
+        <div id="map-view" class="map-view"></div>
+
+        <!-- Sidebar with flights -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1 id="location-name">Loading...</h1>
+                <button id="update-location-btn" class="update-btn">
+                    <i class="fas fa-crosshairs"></i>
+                    <span>Update location</span>
+                </button>
+            </div>
+
+            <div id="flight-list" class="flight-list">
+                <div class="loading">Locating planes above you...</div>
+            </div>
+        </div>
     </div>
     
     <!-- Template for a single flight card -->
@@ -44,10 +44,7 @@
             </div>
             
             <div class="route-info">
-                <div class="city-col">
-                    <span class="city-name origin-city"></span>
-                    <span class="airport-code origin-code"></span>
-                </div>
+                <span class="airport-code origin-code"></span>
                 
                 <div class="flight-path">
                     <div class="dot start"></div>
@@ -57,10 +54,7 @@
                     <div class="dot end"></div>
                 </div>
                 
-                <div class="city-col right-align">
-                    <span class="city-name dest-city"></span>
-                    <span class="airport-code dest-code"></span>
-                </div>
+                <span class="airport-code dest-code"></span>
             </div>
         </div>
     </template>

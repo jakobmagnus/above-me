@@ -1,73 +1,93 @@
 const FLIGHT_LIST = document.getElementById("flight-list");
 const MAP_VIEW = document.getElementById("map-view");
-const TABS = document.querySelectorAll(".tab");
 const TEMPLATE = document.getElementById("flight-card-template");
+const LOCATION_NAME = document.getElementById("location-name");
+const UPDATE_BTN = document.getElementById("update-location-btn");
 
 const BOUNDS_OFFSET = 0.5;
+
+// Default location (Stockholm/Bromma area) as fallback
+const DEFAULT_LAT = 59.3539;
+const DEFAULT_LON = 18.0115;
 
 let map = null;
 let markers = [];
 let userLat, userLon;
-let currentFlights = []; // Cache to store flights if map isn't ready
+let currentFlights = [];
 
 function init() {
-    setupTabs();
+    UPDATE_BTN.addEventListener("click", updateLocation);
+    
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
     } else {
-        renderError("Geolocation is not supported by this browser.");
+        // Use default location if geolocation not supported
+        useDefaultLocation();
     }
 }
 
-function setupTabs() {
-    TABS.forEach((tab) => {
-        tab.addEventListener("click", () => {
-            TABS.forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
+function updateLocation() {
+    LOCATION_NAME.textContent = "Updating...";
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
+    } else {
+        useDefaultLocation();
+    }
+}
 
-            if (tab.innerText === "List") {
-                FLIGHT_LIST.classList.remove("hidden");
-                MAP_VIEW.classList.add("hidden");
-            } else {
-                FLIGHT_LIST.classList.add("hidden");
-                MAP_VIEW.classList.remove("hidden");
-                
-                // LAZY LOAD: Only init map if we have location and it's not created yet
-                if (!map && userLat && userLon) {
-                    initMap(userLat, userLon);
-                } 
-                // If map exists, force a resize recalculation
-                else if (map) {
-                    setTimeout(() => {
-                        map.invalidateSize();
-                        if (userLat && userLon) map.panTo([userLat, userLon]);
-                    }, 100);
-                }
-            }
-        });
-    });
+function useDefaultLocation() {
+    userLat = DEFAULT_LAT;
+    userLon = DEFAULT_LON;
+    LOCATION_NAME.textContent = "Stockholm (default)";
+    initMap(userLat, userLon);
+
+    const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
+    fetchFlights(bounds);
 }
 
 function renderError(msg) {
-    FLIGHT_LIST.innerHTML = `<div class="loading" style="padding: 20px;">${msg}</div>`;
+    FLIGHT_LIST.innerHTML = `<div class="loading">${msg}</div>`;
 }
 
 function errorLoc() {
-    renderError("Unable to retrieve your location. Please allow location access.");
+    // Fallback to default location instead of showing error
+    useDefaultLocation();
 }
 
 async function successLoc(position) {
     userLat = position.coords.latitude;
     userLon = position.coords.longitude;
 
-    // CHANGED: Do NOT init map here if it is hidden. 
-    // It will be initialized when the user clicks the "Map" tab.
-    if (!MAP_VIEW.classList.contains("hidden")) {
-        initMap(userLat, userLon);
-    }
+    // Get location name via reverse geocoding
+    fetchLocationName(userLat, userLon);
+
+    // Initialize map after a brief delay to allow layout to settle
+    setTimeout(() => initMap(userLat, userLon), 150);
 
     const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
     fetchFlights(bounds);
+}
+
+async function fetchLocationName(lat, lon) {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
+        );
+        const data = await response.json();
+        
+        const name = data.address?.city || 
+                     data.address?.town || 
+                     data.address?.village || 
+                     data.address?.suburb ||
+                     data.address?.municipality ||
+                     data.address?.county ||
+                     "Your Location";
+        
+        LOCATION_NAME.textContent = name;
+    } catch (error) {
+        console.error("Failed to get location name:", error);
+        LOCATION_NAME.textContent = "Your Location";
+    }
 }
 
 async function fetchFlights(bounds) {
@@ -102,9 +122,14 @@ async function fetchFlights(bounds) {
 }
 
 function initMap(lat, lon) {
-    if (map) return;
+    if (map) {
+        // Update existing map position
+        map.setView([lat, lon], 10);
+        map.invalidateSize();
+        return;
+    }
 
-    // Inject styles (ensure this doesn't duplicate if run multiple times, though if(map) prevents it)
+    // Inject marker styles
     if (!document.getElementById('map-marker-style')) {
         const style = document.createElement('style');
         style.id = 'map-marker-style';
@@ -115,7 +140,12 @@ function initMap(lat, lon) {
         document.head.appendChild(style);
     }
 
-    map = L.map('map-view').setView([lat, lon], 10);
+    map = L.map('map-view', {
+        center: [lat, lon],
+        zoom: 10,
+        zoomControl: true,
+        preferCanvas: false
+    });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -126,6 +156,25 @@ function initMap(lat, lon) {
         color: '#3388ff',
         radius: 8
     }).addTo(map).bindPopup("You");
+
+    // Force resize after tiles load
+    map.whenReady(() => {
+        map.invalidateSize(true);
+        setTimeout(() => {
+            map.invalidateSize(true);
+            map.setView([lat, lon], 10);
+            updateMapMarkers(currentFlights);
+        }, 200);
+    });
+    
+    // Also handle window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (map) map.invalidateSize(true);
+        }, 100);
+    });
 
     // If we already fetched flights, display them now
     if (currentFlights.length > 0) {
@@ -169,11 +218,10 @@ function updateMapMarkers(flights) {
 }
 
 function renderFlights(data) {
-    currentFlights = data || []; // Cache data for map
+    currentFlights = data || [];
     
     FLIGHT_LIST.innerHTML = "";
     
-    // Try updating map (will fail silently if map is null, which is fine)
     updateMapMarkers(currentFlights);
 
     if (!data || data.length === 0) {
@@ -198,5 +246,9 @@ function renderFlights(data) {
     });
 }
 
-// Start
-init();
+// Start - wait for DOM to be ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
