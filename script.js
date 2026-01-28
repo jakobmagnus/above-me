@@ -1,73 +1,101 @@
 const FLIGHT_LIST = document.getElementById("flight-list");
 const MAP_VIEW = document.getElementById("map-view");
-const TABS = document.querySelectorAll(".tab");
 const TEMPLATE = document.getElementById("flight-card-template");
+const LOCATION_NAME = document.getElementById("location-name");
+const UPDATE_BTN = document.getElementById("update-location-btn");
 
 const BOUNDS_OFFSET = 0.5;
+
+// Default location (Stockholm/Bromma area) as fallback
+const DEFAULT_LAT = 59.3539;
+const DEFAULT_LON = 18.0115;
 
 let map = null;
 let markers = [];
 let userLat, userLon;
-let currentFlights = []; // Cache to store flights if map isn't ready
+let currentFlights = [];
 
 function init() {
-    setupTabs();
+    UPDATE_BTN.addEventListener("click", updateLocation);
+    
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
     } else {
-        renderError("Geolocation is not supported by this browser.");
+        // Use default location if geolocation not supported
+        useDefaultLocation();
     }
 }
 
-function setupTabs() {
-    TABS.forEach((tab) => {
-        tab.addEventListener("click", () => {
-            TABS.forEach(t => t.classList.remove("active"));
-            tab.classList.add("active");
+function updateLocation() {
+    LOCATION_NAME.textContent = "Updating...";
+    
+    // Completely remove and recreate map to fix sizing issues
+    if (map) {
+        map.remove();
+        map = null;
+        markers = [];
+    }
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(successLoc, errorLoc);
+    } else {
+        useDefaultLocation();
+    }
+}
 
-            if (tab.innerText === "List") {
-                FLIGHT_LIST.classList.remove("hidden");
-                MAP_VIEW.classList.add("hidden");
-            } else {
-                FLIGHT_LIST.classList.add("hidden");
-                MAP_VIEW.classList.remove("hidden");
-                
-                // LAZY LOAD: Only init map if we have location and it's not created yet
-                if (!map && userLat && userLon) {
-                    initMap(userLat, userLon);
-                } 
-                // If map exists, force a resize recalculation
-                else if (map) {
-                    setTimeout(() => {
-                        map.invalidateSize();
-                        if (userLat && userLon) map.panTo([userLat, userLon]);
-                    }, 100);
-                }
-            }
-        });
-    });
+function useDefaultLocation() {
+    userLat = DEFAULT_LAT;
+    userLon = DEFAULT_LON;
+    LOCATION_NAME.textContent = "Stockholm (default)";
+    initMap(userLat, userLon);
+
+    const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
+    fetchFlights(bounds);
 }
 
 function renderError(msg) {
-    FLIGHT_LIST.innerHTML = `<div class="loading" style="padding: 20px;">${msg}</div>`;
+    FLIGHT_LIST.innerHTML = `<div class="loading">${msg}</div>`;
 }
 
 function errorLoc() {
-    renderError("Unable to retrieve your location. Please allow location access.");
+    // Fallback to default location instead of showing error
+    useDefaultLocation();
 }
 
 async function successLoc(position) {
     userLat = position.coords.latitude;
     userLon = position.coords.longitude;
 
-    // CHANGED: Do NOT init map here if it is hidden. 
-    // It will be initialized when the user clicks the "Map" tab.
-    if (!MAP_VIEW.classList.contains("hidden")) {
-        initMap(userLat, userLon);
-    }
+    // Get location name via reverse geocoding
+    fetchLocationName(userLat, userLon);
+
+    // Initialize map
+    initMap(userLat, userLon);
 
     const bounds = `${userLat + BOUNDS_OFFSET},${userLat - BOUNDS_OFFSET},${userLon - BOUNDS_OFFSET},${userLon + BOUNDS_OFFSET}`;
     fetchFlights(bounds);
+}
+
+async function fetchLocationName(lat, lon) {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
+        );
+        const data = await response.json();
+        
+        const name = data.address?.city || 
+                     data.address?.town || 
+                     data.address?.village || 
+                     data.address?.suburb ||
+                     data.address?.municipality ||
+                     data.address?.county ||
+                     "Your Location";
+        
+        LOCATION_NAME.textContent = name;
+    } catch (error) {
+        console.error("Failed to get location name:", error);
+        LOCATION_NAME.textContent = "Your Location";
+    }
 }
 
 async function fetchFlights(bounds) {
@@ -102,9 +130,13 @@ async function fetchFlights(bounds) {
 }
 
 function initMap(lat, lon) {
-    if (map) return;
+    if (map) {
+        map.setView([lat, lon], 10);
+        setTimeout(() => map.invalidateSize(true), 100);
+        return;
+    }
 
-    // Inject styles (ensure this doesn't duplicate if run multiple times, though if(map) prevents it)
+    // Inject marker styles
     if (!document.getElementById('map-marker-style')) {
         const style = document.createElement('style');
         style.id = 'map-marker-style';
@@ -115,7 +147,29 @@ function initMap(lat, lon) {
         document.head.appendChild(style);
     }
 
-    map = L.map('map-view').setView([lat, lon], 10);
+    const container = document.getElementById('map-view');
+    
+    // Ensure container is visible and has dimensions
+    if (!container) {
+        console.error('Map container not found');
+        return;
+    }
+
+    // Use setTimeout to ensure DOM is fully ready
+    setTimeout(() => {
+        createMap(lat, lon, container);
+    }, 100);
+}
+
+function createMap(lat, lon, container) {
+    // Clear any existing content in container
+    container.innerHTML = '';
+    
+    map = L.map(container, {
+        center: [lat, lon],
+        zoom: 10,
+        zoomControl: true
+    });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -127,6 +181,28 @@ function initMap(lat, lon) {
         radius: 8
     }).addTo(map).bindPopup("You");
 
+    // Critical: Multiple invalidateSize calls to fix tile alignment
+    map.invalidateSize(true);
+    
+    setTimeout(() => {
+        map.invalidateSize(true);
+    }, 100);
+    
+    setTimeout(() => {
+        map.invalidateSize(true);
+    }, 500);
+
+    // Use ResizeObserver to handle container size changes
+    const resizeObserver = new ResizeObserver(() => {
+        if (map) map.invalidateSize(true);
+    });
+    resizeObserver.observe(container);
+    
+    // Also handle window resize
+    window.addEventListener('resize', () => {
+        if (map) map.invalidateSize(true);
+    });
+
     // If we already fetched flights, display them now
     if (currentFlights.length > 0) {
         updateMapMarkers(currentFlights);
@@ -134,10 +210,16 @@ function initMap(lat, lon) {
 }
 
 function updateMapMarkers(flights) {
-    if (!map) return;
+    // If map isn't ready yet, retry after a short delay
+    if (!map) {
+        setTimeout(() => updateMapMarkers(flights), 200);
+        return;
+    }
     
     markers.forEach(m => map.removeLayer(m));
     markers = [];
+
+    console.log('Adding markers for', flights.length, 'flights');
 
     flights.forEach(f => {
         const lat = f.lat || f.latitude;
@@ -166,14 +248,15 @@ function updateMapMarkers(flights) {
             markers.push(m);
         }
     });
+    
+    console.log('Added', markers.length, 'markers to map');
 }
 
 function renderFlights(data) {
-    currentFlights = data || []; // Cache data for map
+    currentFlights = data || [];
     
     FLIGHT_LIST.innerHTML = "";
     
-    // Try updating map (will fail silently if map is null, which is fine)
     updateMapMarkers(currentFlights);
 
     if (!data || data.length === 0) {
@@ -198,5 +281,9 @@ function renderFlights(data) {
     });
 }
 
-// Start
-init();
+// Start - wait for DOM to be ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
