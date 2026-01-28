@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flights Above Me</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Ensure this Leaflet CSS link is present! -->
@@ -35,26 +38,34 @@
         <div class="flight-card">
             <div class="card-header">
                 <div class="airline-info">
-                    <i class="fas fa-plane"></i>
+                    <div class="airline-logo-container">
+                        <img class="airline-logo" src="" alt="Logo">
+                        <i class="fas fa-plane placeholder-icon"></i>
+                    </div>
                     <span class="flight-number"></span>
                 </div>
-                <div class="tags">
-                    <span class="tag reg-number"></span>
+                <div class="flight-stats">
+                    <span class="stat-pill altitude"></span>
+                    <span class="stat-pill reg-number"></span>
                 </div>
             </div>
             
             <div class="route-info">
-                <span class="airport-code origin-code"></span>
+                <div class="airport-group origin-group">
+                    <span class="city-name origin-city"></span>
+                    <span class="airport-code origin-code"></span>
+                </div>
                 
                 <div class="flight-path">
-                    <div class="dot start"></div>
                     <div class="line">
                         <i class="fas fa-plane plane-icon"></i>
                     </div>
-                    <div class="dot end"></div>
                 </div>
                 
-                <span class="airport-code dest-code"></span>
+                <div class="airport-group dest-group">
+                    <span class="city-name dest-city"></span>
+                    <span class="airport-code dest-code"></span>
+                </div>
             </div>
         </div>
     </template>
