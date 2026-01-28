@@ -57,6 +57,17 @@ function updateLocation() {
 }
 
 function useDefaultLocation() {
+    // Clean up observers and listeners before initializing
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+    
+    if (resizeListener) {
+        window.removeEventListener('resize', resizeListener);
+        resizeListener = null;
+    }
+    
     userLat = DEFAULT_LAT;
     userLon = DEFAULT_LON;
     LOCATION_NAME.textContent = "Stockholm (default)";
@@ -82,16 +93,18 @@ async function successLoc(position) {
     // Get location name via reverse geocoding
     fetchLocationName(userLat, userLon);
 
-    // Initialize map and wait for it to be ready
+    // Initialize map (this is async due to dimension checking)
+    initMap(userLat, userLon);
+    
+    // Wait for map to be fully initialized
     await new Promise(resolve => {
         const checkMapReady = () => {
             if (map) {
                 resolve();
             } else {
-                requestAnimationFrame(checkMapReady);
+                setTimeout(checkMapReady, 50);
             }
         };
-        initMap(userLat, userLon);
         checkMapReady();
     });
 
@@ -105,7 +118,9 @@ async function fetchLocationName(lat, lon) {
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
             {
                 headers: {
-                    "User-Agent": "FlightTrackerApp/1.0 (contact: admin@example.com)"
+                    // User-Agent is required by Nominatim's terms of service
+                    // TODO: Replace with actual contact email before deployment
+                    "User-Agent": "FlightTrackerApp/1.0 (https://github.com/jakobmagnus/above-me)"
                 }
             }
         );
@@ -189,7 +204,7 @@ function initMap(lat, lon) {
             attempts++;
             requestAnimationFrame(checkAndInit);
         } else {
-            console.error('Map container did not acquire dimensions in time; aborting map initialization.');
+            console.error('Map container did not acquire dimensions in time. Aborting map initialization.');
         }
     };
     
@@ -197,6 +212,17 @@ function initMap(lat, lon) {
 }
 
 function createMap(lat, lon, container) {
+    // Clean up any existing observers/listeners before creating new ones
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+    
+    if (resizeListener) {
+        window.removeEventListener('resize', resizeListener);
+        resizeListener = null;
+    }
+    
     map = L.map(container, {
         center: [lat, lon],
         zoom: 10,
