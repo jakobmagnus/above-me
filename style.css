@@ -50,9 +50,34 @@ body {
     height: 100% !important;
 }
 
-/* Fix for Leaflet tiles */
+/* Fix for Leaflet tiles - critical for proper alignment */
+.leaflet-tile-pane {
+    transform: translate3d(0, 0, 0) !important;
+}
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.leaflet-tile {
+    filter: inherit;
+    visibility: inherit;
+}
+
 .leaflet-pane img {
     max-width: none !important;
+    max-height: none !important;
 }
 
 /* Leaflet container must have an explicit size */
@@ -60,6 +85,8 @@ body {
     width: 100% !important;
     height: 100% !important;
     background-color: #1e1e1e;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* Sidebar Styles */

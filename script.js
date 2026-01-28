@@ -132,7 +132,7 @@ async function fetchFlights(bounds) {
 function initMap(lat, lon) {
     if (map) {
         map.setView([lat, lon], 10);
-        map.invalidateSize(true);
+        setTimeout(() => map.invalidateSize(true), 100);
         return;
     }
 
@@ -155,23 +155,16 @@ function initMap(lat, lon) {
         return;
     }
 
-    // Force a layout recalculation
-    container.offsetHeight;
-    
-    // Wait for next animation frame to ensure layout is complete
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            const rect = container.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-                createMap(lat, lon, container);
-            } else {
-                console.error('Map container has no dimensions:', rect);
-            }
-        });
-    });
+    // Use setTimeout to ensure DOM is fully ready
+    setTimeout(() => {
+        createMap(lat, lon, container);
+    }, 100);
 }
 
 function createMap(lat, lon, container) {
+    // Clear any existing content in container
+    container.innerHTML = '';
+    
     map = L.map(container, {
         center: [lat, lon],
         zoom: 10,
@@ -188,14 +181,22 @@ function createMap(lat, lon, container) {
         radius: 8
     }).addTo(map).bindPopup("You");
 
+    // Critical: Multiple invalidateSize calls to fix tile alignment
+    map.invalidateSize(true);
+    
+    setTimeout(() => {
+        map.invalidateSize(true);
+    }, 100);
+    
+    setTimeout(() => {
+        map.invalidateSize(true);
+    }, 500);
+
     // Use ResizeObserver to handle container size changes
     const resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize(true);
+        if (map) map.invalidateSize(true);
     });
     resizeObserver.observe(container);
-
-    // Initial invalidation
-    map.invalidateSize(true);
     
     // Also handle window resize
     window.addEventListener('resize', () => {
@@ -209,10 +210,16 @@ function createMap(lat, lon, container) {
 }
 
 function updateMapMarkers(flights) {
-    if (!map) return;
+    // If map isn't ready yet, retry after a short delay
+    if (!map) {
+        setTimeout(() => updateMapMarkers(flights), 200);
+        return;
+    }
     
     markers.forEach(m => map.removeLayer(m));
     markers = [];
+
+    console.log('Adding markers for', flights.length, 'flights');
 
     flights.forEach(f => {
         const lat = f.lat || f.latitude;
@@ -241,6 +248,8 @@ function updateMapMarkers(flights) {
             markers.push(m);
         }
     });
+    
+    console.log('Added', markers.length, 'markers to map');
 }
 
 function renderFlights(data) {
