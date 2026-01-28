@@ -151,11 +151,11 @@ body {
 /* Flight Card Styles */
 .flight-card {
     background-color: var(--card-bg);
-    border-radius: 12px;
-    padding: 14px 16px;
+    border-radius: 16px;
+    padding: 16px 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .card-header {
@@ -167,21 +167,55 @@ body {
 .airline-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 15px;
 }
 
-.airline-info i {
+.airline-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+    padding: 6px;
+}
+
+.airline-logo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    border-radius: 0;
+}
+
+.airline-logo-img.loaded {
+    display: block;
+}
+
+.airline-logo-fallback {
     color: var(--accent);
-    font-size: 12px;
+    font-size: 14px;
+}
+
+.airline-logo-img.loaded + .airline-logo-fallback {
+    display: none;
+}
+
+.tags {
+    display: flex;
+    gap: 8px;
 }
 
 .tag {
     background-color: #2a2a2a;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 10px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11px;
     color: var(--text-secondary);
     font-family: monospace;
 }
@@ -189,18 +223,35 @@ body {
 .route-info {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-end;
+    margin-top: 4px;
+}
+
+.airport-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.origin-info {
+    align-items: flex-start;
+}
+
+.dest-info {
+    align-items: flex-end;
+}
+
+.city-name {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 400;
 }
 
 .airport-code {
-    font-size: 22px;
+    font-size: 36px;
     font-weight: 700;
     letter-spacing: 1px;
-    min-width: 50px;
-}
-
-.route-info .airport-code:last-child {
-    text-align: right;
+    line-height: 1;
 }
 
 /* Flight Path Visualization */
@@ -210,21 +261,15 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
-    margin: 0 12px;
-    color: var(--accent);
-}
-
-.dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--accent);
+    margin: 0 16px;
+    padding-bottom: 8px;
 }
 
 .line {
     flex: 1;
-    height: 2px;
-    background-color: var(--accent);
+    height: 3px;
+    background: linear-gradient(to right, var(--airline-color, var(--accent)) 0%, var(--airline-color, var(--accent)) 50%, #555 50%, #555 100%);
+    border-radius: 2px;
     position: relative;
     display: flex;
     align-items: center;
@@ -232,10 +277,11 @@ body {
 }
 
 .plane-icon {
-    transform: rotate(90deg);
-    font-size: 11px;
+    color: #fff;
+    font-size: 14px;
     background-color: var(--card-bg);
-    padding: 0 4px;
+    padding: 0 6px;
+    transform: rotate(0deg);
 }
 
 .hidden {
@@ -246,7 +292,7 @@ body {
 @media (min-width: 900px) {
     .app-container {
         grid-template-rows: 100vh;
-        grid-template-columns: 1fr 380px;
+        grid-template-columns: 1fr 420px;
     }
 
     .map-view {
@@ -260,7 +306,7 @@ body {
     .sidebar {
         grid-row: 1;
         grid-column: 2;
-        width: 380px;
+        width: 420px;
         height: 100vh;
         max-height: 100vh;
         border-left: 1px solid #222;
@@ -271,11 +317,16 @@ body {
     }
 
     .flight-card {
-        padding: 16px 18px;
+        padding: 18px 22px;
     }
 
     .airport-code {
-        font-size: 24px;
+        font-size: 42px;
+    }
+
+    .airline-logo {
+        width: 40px;
+        height: 40px;
     }
 }
 
@@ -298,6 +349,11 @@ body {
     }
 
     .airport-code {
-        font-size: 20px;
+        font-size: 28px;
+    }
+
+    .airline-logo {
+        width: 32px;
+        height: 32px;
     }
 }
