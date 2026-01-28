@@ -44,6 +44,12 @@ body {
     overflow: hidden;
 }
 
+/* Ensure Leaflet container is properly sized */
+#map-view {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 /* Fix for Leaflet tiles */
 .leaflet-pane img {
     max-width: none !important;
@@ -53,6 +59,7 @@ body {
 .leaflet-container {
     width: 100% !important;
     height: 100% !important;
+    background-color: #1e1e1e;
 }
 
 /* Sidebar Styles */
@@ -62,7 +69,7 @@ body {
     background-color: var(--bg-color);
     padding: 20px;
     overflow-y: auto;
-    max-height: 45vh;
+    max-height: calc(100vh - 55vh);
 }
 
 .sidebar-header {
