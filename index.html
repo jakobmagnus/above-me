@@ -35,34 +35,26 @@
         <div class="flight-card">
             <div class="card-header">
                 <div class="airline-info">
-                    <div class="airline-logo">
-                        <img class="airline-logo-img" src="" alt="" />
-                        <i class="fas fa-plane airline-logo-fallback"></i>
-                    </div>
+                    <i class="fas fa-plane"></i>
                     <span class="flight-number"></span>
                 </div>
                 <div class="tags">
-                    <span class="tag altitude"></span>
                     <span class="tag reg-number"></span>
                 </div>
             </div>
             
             <div class="route-info">
-                <div class="airport-info origin-info">
-                    <span class="city-name origin-city"></span>
-                    <span class="airport-code origin-code"></span>
-                </div>
+                <span class="airport-code origin-code"></span>
                 
                 <div class="flight-path">
+                    <div class="dot start"></div>
                     <div class="line">
                         <i class="fas fa-plane plane-icon"></i>
                     </div>
+                    <div class="dot end"></div>
                 </div>
                 
-                <div class="airport-info dest-info">
-                    <span class="city-name dest-city"></span>
-                    <span class="airport-code dest-code"></span>
-                </div>
+                <span class="airport-code dest-code"></span>
             </div>
         </div>
     </template>
