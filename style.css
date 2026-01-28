@@ -62,7 +62,7 @@ body {
     background-color: var(--bg-color);
     padding: 20px;
     overflow-y: auto;
-    max-height: calc(100vh - 55vh);
+    max-height: 45vh;
 }
 
 .sidebar-header {
