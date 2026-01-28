@@ -271,11 +271,76 @@ function renderFlights(data) {
         const reg = flight.reg || flight.registration || "";
         const orig = flight.orig_iata || flight.origin_airport_iata || "---";
         const dest = flight.dest_iata || flight.destination_airport_iata || "---";
+        const alt = flight.alt || flight.altitude || 0;
         
         clone.querySelector(".flight-number").textContent = num;
         clone.querySelector(".reg-number").textContent = reg;
+        clone.querySelector(".altitude").textContent = alt;
+        
         clone.querySelector(".origin-code").textContent = orig;
         clone.querySelector(".dest-code").textContent = dest;
+        
+        // Try to find city names if available in common FR24 property names
+        // Often these are not in the lightweight feed, so fallback to empty
+        const origCity = flight.origin_city || flight.origin_airport_name || ""; 
+        const destCity = flight.destination_city || flight.destination_airport_name || "";
+        
+        clone.querySelector(".origin-city").textContent = origCity;
+        clone.querySelector(".dest-city").textContent = destCity;
+
+        // --- Logo Handling ---
+        const logoImg = clone.querySelector(".airline-logo");
+        const placeholderIcon = clone.querySelector(".placeholder-icon");
+        const logoContainer = clone.querySelector(".airline-logo-container");
+        
+        // 1. Try explicit airline code
+        // 2. Fallback: Parse from flight number/callsign (e.g. "LH123" -> "LH")
+        let airlineCode = flight.airline_iata || flight.airline_icao;
+        if (!airlineCode && num && num !== "N/A") {
+            const match = num.match(/^([A-Z]{2,3})\d+/);
+            if (match) {
+                airlineCode = match[1];
+            }
+        }
+
+        if (airlineCode) {
+            // Determine URL based on code length (IATA vs ICAO)
+            let logoUrl = '';
+            if (airlineCode.length === 2) {
+                // IATA Code -> avs.io
+                logoUrl = `https://pics.avs.io/200/200/${airlineCode}.png`;
+            } else {
+                // ICAO Code (3 letters) -> FlightAware
+                logoUrl = `https://www.flightaware.com/images/airline_logos/90p/${airlineCode}.png`;
+            }
+
+            logoImg.src = logoUrl;
+            
+            logoImg.onload = () => {
+                // Check if image actually has content (not a 1x1 pixel or broken)
+                if (logoImg.naturalWidth > 10 && logoImg.naturalHeight > 10) {
+                    logoImg.style.display = 'block';
+                    placeholderIcon.style.display = 'none';
+                    logoContainer.style.backgroundColor = '#fff';
+                } else {
+                    logoImg.style.display = 'none';
+                    placeholderIcon.style.display = 'block';
+                    logoContainer.style.backgroundColor = '#333';
+                }
+            };
+            
+            logoImg.onerror = () => {
+                // If the first attempt fails, maybe try the other format if we can guess?
+                // For now, just show placeholder
+                logoImg.style.display = 'none';
+                placeholderIcon.style.display = 'block';
+                logoContainer.style.backgroundColor = '#333';
+            };
+        } else {
+            // No code found
+            logoImg.style.display = 'none';
+            placeholderIcon.style.display = 'block';
+        }
 
         FLIGHT_LIST.appendChild(clone);
     });
