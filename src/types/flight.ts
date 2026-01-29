@@ -23,4 +23,9 @@ export interface Flight {
     destination_city?: string;
     destination_airport_name?: string;
     flight_id?: string;
+    // Origin and destination coordinates for progress calculation
+    origin_lat?: number;
+    origin_lon?: number;
+    dest_lat?: number;
+    dest_lon?: number;
 }

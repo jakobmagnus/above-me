@@ -19,6 +19,32 @@ const BOUNDS_OFFSET = 0.5;
 const DEFAULT_LAT = 59.3539;
 const DEFAULT_LON = 18.0115;
 
+// Normalize and validate flight data
+function normalizeValue(value: string | null | undefined): string {
+    return value ? value.trim().toUpperCase() : '';
+}
+
+function isInvalidPlaceholder(value: string): boolean {
+    return !value || value === 'N/A' || value === '---';
+}
+
+function isFlightValid(flight: Flight): boolean {
+    const rawFlightNumber = flight.callsign || flight.flight_number || flight.flight;
+    const rawOriginCode = flight.orig_iata || flight.origin_airport_iata;
+    const rawDestCode = flight.dest_iata || flight.destination_airport_iata;
+
+    const flightNumber = normalizeValue(rawFlightNumber);
+    const originCode = normalizeValue(rawOriginCode);
+    const destCode = normalizeValue(rawDestCode);
+    
+    // Filter out flights with N/A, ---, or missing essential fields
+    return !(
+        isInvalidPlaceholder(flightNumber) ||
+        isInvalidPlaceholder(originCode) ||
+        isInvalidPlaceholder(destCode)
+    );
+}
+
 export default function FlightTracker() {
     const [userLat, setUserLat] = useState<number>(DEFAULT_LAT);
     const [userLon, setUserLon] = useState<number>(DEFAULT_LON);
@@ -76,7 +102,10 @@ export default function FlightTracker() {
                 );
             }
 
-            setFlights(flightList);
+            // Filter out flights with incomplete data
+            const validFlights = flightList.filter(isFlightValid);
+
+            setFlights(validFlights);
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');

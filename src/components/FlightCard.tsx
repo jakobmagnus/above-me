@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Flight } from '@/types/flight';
+import { calculateFlightProgress } from '@/utils/flightProgress';
+import { getAirportCoordinates } from '@/utils/airportCoordinates';
 
 interface FlightCardProps {
     flight: Flight;
@@ -18,6 +20,47 @@ export default function FlightCard({ flight }: FlightCardProps) {
     const altitude = flight.alt || flight.altitude || 0;
     const originCity = flight.origin_city || flight.origin_airport_name || '';
     const destCity = flight.destination_city || flight.destination_airport_name || '';
+
+    // Calculate flight progress
+    const currentLat = flight.lat ?? flight.latitude;
+    const currentLon = flight.lon ?? flight.longitude;
+    
+    // Get origin and destination coordinates from API or lookup
+    let originLat = flight.origin_lat;
+    let originLon = flight.origin_lon;
+    let destLat = flight.dest_lat;
+    let destLon = flight.dest_lon;
+
+    // If coordinates not in flight data, look them up by IATA code
+    if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
+        const originCoords = getAirportCoordinates(originCode);
+        if (originCoords) {
+            originLat = originCoords.lat;
+            originLon = originCoords.lon;
+        }
+    }
+
+    if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
+        const destCoords = getAirportCoordinates(destCode);
+        if (destCoords) {
+            destLat = destCoords.lat;
+            destLon = destCoords.lon;
+        }
+    }
+
+    let progressPercentage: number | null = null;
+    if (currentLat !== undefined && currentLon !== undefined &&
+        originLat !== undefined && originLon !== undefined &&
+        destLat !== undefined && destLon !== undefined) {
+        progressPercentage = calculateFlightProgress(
+            currentLat, currentLon,
+            originLat, originLon,
+            destLat, destLon
+        );
+    }
+
+    // Default to 40% if we can't calculate progress
+    const progress = progressPercentage !== null ? progressPercentage : 40;
 
     // Extract airline code from flight number
     let airlineCode = flight.airline_iata || flight.airline_icao;
@@ -84,9 +127,16 @@ export default function FlightCard({ flight }: FlightCardProps) {
                 </div>
 
                 <div className="flex-1 flex items-center justify-center mx-5 relative h-6 pb-1">
-                    <div className="w-full h-0.5 bg-gradient-to-r from-orange-500 to-gray-600 relative flex items-center">
+                    <div className="w-full h-0.5 bg-gray-600 relative flex items-center">
+                        {/* Progress bar showing completed portion of flight */}
+                        <div 
+                            className="absolute left-0 h-0.5 bg-orange-500 transition-all duration-500"
+                            style={{ width: `${progress}%` }}
+                        />
+                        {/* Airplane icon positioned at progress point */}
                         <svg 
-                            className="absolute left-[40%] w-3.5 h-3.5 text-white bg-[#111] px-0.5 rotate-90" 
+                            className="absolute w-3.5 h-3.5 text-white bg-[#111] px-0.5 rotate-90 transition-all duration-500" 
+                            style={{ left: `${progress}%`, transform: 'translateX(-50%) rotate(90deg)' }}
                             fill="currentColor" 
                             viewBox="0 0 24 24"
                         >
