@@ -62,7 +62,7 @@ PR #7 should be merged before PR #5 because it fixes a critical build failure th
 **PR #7 is based on the same base branch as PR #5**, but appears to be built on top of similar Next.js migration changes. Both PRs show:
 - Both branches originate from `main` (SHA: 443b1ed)
 - Both include Next.js migration changes
-- Both modify 640+ files (PR #7) and 347 files (PR #5)
+- PR #7 modifies 640 files while PR #5 modifies 347 files
 
 This suggests **PR #7 includes the changes from PR #5 or a parallel version of it**, plus additional fixes.
 
