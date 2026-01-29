@@ -49,6 +49,23 @@ export default function FlightTracker() {
         }
     }, []);
 
+    // Check if flight has all required fields
+    const isFlightValid = (flight: Flight): boolean => {
+        const flightNumber = flight.callsign || flight.flight_number || flight.flight;
+        const originCode = flight.orig_iata || flight.origin_airport_iata;
+        const destCode = flight.dest_iata || flight.destination_airport_iata;
+        
+        // Filter out flights with N/A, ---, or missing essential fields
+        return !!(
+            flightNumber && 
+            flightNumber !== 'N/A' &&
+            originCode && 
+            originCode !== '---' &&
+            destCode && 
+            destCode !== '---'
+        );
+    };
+
     const fetchFlights = useCallback(async (lat: number, lon: number) => {
         setLoading(true);
         setError(null);
@@ -76,7 +93,10 @@ export default function FlightTracker() {
                 );
             }
 
-            setFlights(flightList);
+            // Filter out flights with incomplete data
+            const validFlights = flightList.filter(isFlightValid);
+
+            setFlights(validFlights);
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
