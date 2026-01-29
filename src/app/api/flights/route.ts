@@ -1,0 +1,40 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+    const searchParams = request.nextUrl.searchParams;
+    const bounds = searchParams.get('bounds');
+
+    if (!bounds) {
+        return NextResponse.json({ error: 'Bounds parameter is required' }, { status: 400 });
+    }
+
+    const API_KEY = "019bfae7-9f78-7394-af38-11798d2236ca|KpVocqDzypbJYfF8W2kAA0AeViTEixREzUkeOst85a0afd01";
+    const url = `https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds=${bounds}`;
+
+    try {
+        const frResponse = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Accept-Version': 'v1',
+                'Authorization': `Bearer ${API_KEY}`
+            },
+            next: { revalidate: 5 }
+        });
+
+        if (!frResponse.ok) {
+            const errText = await frResponse.text();
+            throw new Error(`Upstream API Error: ${frResponse.status} - ${errText}`);
+        }
+
+        const data = await frResponse.json();
+        return NextResponse.json(data);
+
+    } catch (error) {
+        console.error("API Error:", error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Unknown error' },
+            { status: 500 }
+        );
+    }
+}
