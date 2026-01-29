@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Flight } from '@/types/flight';
 import { calculateFlightProgress } from '@/utils/flightProgress';
+import { getAirportCoordinates } from '@/utils/airportCoordinates';
 
 interface FlightCardProps {
     flight: Flight;
@@ -23,10 +24,29 @@ export default function FlightCard({ flight }: FlightCardProps) {
     // Calculate flight progress
     const currentLat = flight.lat || flight.latitude;
     const currentLon = flight.lon || flight.longitude;
-    const originLat = flight.origin_lat;
-    const originLon = flight.origin_lon;
-    const destLat = flight.dest_lat;
-    const destLon = flight.dest_lon;
+    
+    // Get origin and destination coordinates from API or lookup
+    let originLat = flight.origin_lat;
+    let originLon = flight.origin_lon;
+    let destLat = flight.dest_lat;
+    let destLon = flight.dest_lon;
+
+    // If coordinates not in flight data, look them up by IATA code
+    if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
+        const originCoords = getAirportCoordinates(originCode);
+        if (originCoords) {
+            originLat = originCoords.lat;
+            originLon = originCoords.lon;
+        }
+    }
+
+    if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
+        const destCoords = getAirportCoordinates(destCode);
+        if (destCoords) {
+            destLat = destCoords.lat;
+            destLon = destCoords.lon;
+        }
+    }
 
     let progressPercentage: number | null = null;
     if (currentLat !== undefined && currentLon !== undefined &&
