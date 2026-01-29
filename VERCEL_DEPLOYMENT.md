@@ -6,13 +6,13 @@ To fix the "Failed to load flights: API Error: 503" error, you need to add the F
 
 ### Steps:
 
-1. Go to your Vercel project dashboard: https://vercel.com/jakobmagnus/above-me
+1. Go to your Vercel project dashboard (e.g., https://vercel.com/your-username/your-project-name)
 2. Click on the project name
 3. Navigate to **Settings** in the top menu
 4. Click on **Environment Variables** in the left sidebar
 5. Add a new environment variable:
    - **Key**: `FLIGHTRADAR24_API_KEY`
-   - **Value**: `019c09f8-8efb-71ba-a04c-b6c51792f7cb|OFAxudlKhSnJ3Y3MO5AdQJ4jPfUIIGKc6hai3eieaa446b39`
+   - **Value**: Your FlightRadar24 API key (contact the repository owner or check your secure key storage)
    - Select all environments: **Production**, **Preview**, and **Development**
 6. Click **Save**
 7. **Redeploy** your application:
