@@ -8,7 +8,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Bounds parameter is required' }, { status: 400 });
     }
 
-    const API_KEY = "019bfae7-9f78-7394-af38-11798d2236ca|KpVocqDzypbJYfF8W2kAA0AeViTEixREzUkeOst85a0afd01";
+    const API_KEY = process.env.FLIGHTRADAR24_API_KEY;
+    
+    if (!API_KEY) {
+        console.error("API key not configured");
+        return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
+    }
+
     const url = `https://fr24api.flightradar24.com/api/live/flight-positions/full?bounds=${bounds}`;
 
     try {

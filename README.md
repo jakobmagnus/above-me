@@ -2,7 +2,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, set up your environment variables:
+
+```bash
+# Copy the example environment file
+cp .env.example .env.local
+
+# Edit .env.local and add your FlightRadar24 API key
+```
+
+Then, run the development server:
 
 ```bash
 npm run dev
