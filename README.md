@@ -1,6 +1,6 @@
 # Flights Above Me ✈️
 
-A real-time flight tracker that shows aircraft currently flying above your location. Using your device's geolocation and the OpenSky Network API, this application displays live flight information including airline details, flight paths, altitude, and aircraft registration on an interactive map.
+A real-time flight tracker that shows aircraft currently flying above your location. Using your device's geolocation and the FlightRadar24 API, this application displays live flight information including airline details, flight paths, altitude, and aircraft registration on an interactive map.
 
 ## Features
 
@@ -22,7 +22,7 @@ This is a [Next.js](https://nextjs.org) project built with:
 - **TypeScript** - Type-safe development
 - **Tailwind CSS 4** - Utility-first styling
 - **Leaflet** - Interactive maps
-- **OpenSky Network API** - Real-time flight data
+- **FlightRadar24 API** - Real-time flight data
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono).
 
@@ -32,6 +32,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 - Node.js 20.x or later
 - npm, yarn, pnpm, or bun package manager
+- FlightRadar24 API key (required for flight data)
 
 ### Installation
 
@@ -46,7 +47,17 @@ yarn install
 pnpm install
 ```
 
-3. Run the development server:
+3. Configure your environment variables:
+
+Create a `.env.local` file in the root directory and add your FlightRadar24 API key:
+
+```bash
+FLIGHTRADAR24_API_KEY=your_api_key_here
+```
+
+To obtain an API key, visit [FlightRadar24 API](https://www.flightradar24.com/premium/api) and sign up for an API plan.
+
+4. Run the development server:
 
 ```bash
 npm run dev
@@ -58,7 +69,7 @@ pnpm dev
 bun dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 The application will request your location permission to show flights above you. Allow location access for the best experience.
 
@@ -77,11 +88,23 @@ npm start
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
+### Environment Variables
+
+When deploying to Vercel or any other platform, make sure to configure the following environment variable:
+
+- `FLIGHTRADAR24_API_KEY`: Your FlightRadar24 API key
+
+**For Vercel:**
+1. Go to your project settings
+2. Navigate to "Environment Variables"
+3. Add `FLIGHTRADAR24_API_KEY` with your API key value
+4. Redeploy the application
+
 Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
 ## Data Source
 
-Flight data is provided by the [OpenSky Network](https://opensky-network.org/), a community-based receiver network that provides free access to real-time aircraft position data.
+Flight data is provided by the [FlightRadar24 API](https://www.flightradar24.com/premium/api), which offers real-time aircraft position data and comprehensive flight information.
 
 ## License
 
