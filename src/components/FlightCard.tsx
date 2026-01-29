@@ -22,8 +22,8 @@ export default function FlightCard({ flight }: FlightCardProps) {
     const destCity = flight.destination_city || flight.destination_airport_name || '';
 
     // Calculate flight progress
-    const currentLat = flight.lat || flight.latitude;
-    const currentLon = flight.lon || flight.longitude;
+    const currentLat = flight.lat ?? flight.latitude;
+    const currentLon = flight.lon ?? flight.longitude;
     
     // Get origin and destination coordinates from API or lookup
     let originLat = flight.origin_lat;

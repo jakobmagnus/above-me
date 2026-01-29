@@ -100,8 +100,11 @@ Where:
 - **Australia/Oceania**: 4 major airports (SYD, MEL, BNE, AKL)
 - **South America**: 6 major airports (GRU, GIG, BOG, etc.)
 - **Africa**: 4 major airports (JNB, CAI, CPT, NBO)
+- **Middle East (additional)**: 2 major airports (TLV, AMM)
+- **Additional European airports**: 6 airports (MAN, EDI, WAW, PRG, BUD, SVO)
+- **Additional Asian airports**: 4 airports (CAN, CTU, MNL, CGK)
 
-Total: 100+ airports
+Total: 83 airports
 
 ### Fallback Behavior
 - If airport coordinates unavailable: defaults to 40% progress
