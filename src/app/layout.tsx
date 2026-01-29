@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
+import { Roboto_Mono } from "next/font/google";
 import "./globals.css";
+
+const robotoMono = Roboto_Mono({
+    variable: "--font-roboto-mono",
+    subsets: ["latin"],
+    weight: ["400", "500"],
+});
 
 export const metadata: Metadata = {
     title: "Flights Above Me",
@@ -13,7 +20,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className="antialiased">
+            <body className={`${robotoMono.variable} antialiased`}>
                 {children}
             </body>
         </html>
