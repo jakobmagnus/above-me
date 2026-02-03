@@ -18,8 +18,13 @@ export default function FlightCard({ flight }: FlightCardProps) {
     const originCode = flight.orig_iata || flight.origin_airport_iata || '---';
     const destCode = flight.dest_iata || flight.destination_airport_iata || '---';
     const altitude = flight.alt || flight.altitude || 0;
-    const originCity = flight.origin_city || flight.origin_airport_name || '';
-    const destCity = flight.destination_city || flight.destination_airport_name || '';
+    
+    // Get airport info for city names
+    const originAirportInfo = getAirportCoordinates(originCode);
+    const destAirportInfo = getAirportCoordinates(destCode);
+    
+    const originCity = flight.origin_city || flight.origin_airport_name || originAirportInfo?.city || '';
+    const destCity = flight.destination_city || flight.destination_airport_name || destAirportInfo?.city || '';
 
     // Calculate flight progress
     const currentLat = flight.lat ?? flight.latitude;
@@ -120,34 +125,41 @@ export default function FlightCard({ flight }: FlightCardProps) {
             </div>
 
             {/* Route Info */}
-            <div className="flex justify-between items-end">
-                <div className="flex flex-col gap-1">
-                    <span className="text-sm text-gray-500">{originCity}</span>
-                    <span className="text-2xl md:text-3xl font-light tracking-wider text-white">{originCode}</span>
+            <div className="flex justify-between items-center">
+                <div className="flex flex-col">
+                    <span className="text-sm text-gray-400 mb-1">{originCity}</span>
+                    <span className="text-3xl md:text-4xl font-light tracking-wide text-white">{originCode}</span>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center mx-5 relative h-6 pb-1">
-                    <div className="w-full h-0.5 bg-gray-600 relative flex items-center">
-                        {/* Progress bar showing completed portion of flight */}
+                <div className="flex-1 flex items-center justify-center mx-5 relative h-6 self-end mb-2">
+                    <div className="w-full h-[3px] bg-gray-600 relative flex items-center">
+                        {/* Progress bar with gradient from red-orange to yellow */}
                         <div 
-                            className="absolute left-0 h-0.5 bg-orange-500 transition-all duration-500"
-                            style={{ width: `${progress}%` }}
+                            className="absolute left-0 h-[3px] transition-all duration-500"
+                            style={{ 
+                                width: `${progress}%`,
+                                background: 'linear-gradient(to right, #c94a32, #d4693a, #e89842, #f5b84a)'
+                            }}
                         />
                         {/* Airplane icon positioned at progress point */}
-                        <svg 
-                            className="absolute w-3.5 h-3.5 text-white bg-[#111] px-0.5 rotate-90 transition-all duration-500" 
-                            style={{ left: `${progress}%`, transform: 'translateX(-50%) rotate(90deg)' }}
-                            fill="currentColor" 
-                            viewBox="0 0 24 24"
+                        <div 
+                            className="absolute transition-all duration-500 flex items-center justify-center"
+                            style={{ left: `${progress}%`, transform: 'translateX(-50%)' }}
                         >
-                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-                        </svg>
+                            <svg 
+                                className="w-5 h-5 text-white drop-shadow-md rotate-90" 
+                                fill="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-1 items-end text-right">
-                    <span className="text-sm text-gray-500">{destCity}</span>
-                    <span className="text-2xl md:text-3xl font-light tracking-wider text-white">{destCode}</span>
+                <div className="flex flex-col items-end">
+                    <span className="text-sm text-gray-400 mb-1">{destCity}</span>
+                    <span className="text-3xl md:text-4xl font-light tracking-wide text-white">{destCode}</span>
                 </div>
             </div>
         </div>
