@@ -30,7 +30,11 @@ export async function GET(request: NextRequest) {
 
         if (!frResponse.ok) {
             const errText = await frResponse.text();
-            throw new Error(`Upstream API Error: ${frResponse.status} - ${errText}`);
+            console.error(`FR24 API Error: ${frResponse.status} - ${errText}`);
+            return NextResponse.json(
+                { error: `Upstream API Error: ${frResponse.status}` },
+                { status: frResponse.status }
+            );
         }
 
         const data = await frResponse.json();
