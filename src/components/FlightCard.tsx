@@ -28,20 +28,28 @@ export default function FlightCard({ flight }: FlightCardProps) {
         
         // Fetch origin airport info
         if (originCode && originCode !== '---') {
-            fetchAirportInfo(originCode).then(info => {
-                if (isMounted) {
-                    setOriginAirportInfo(info);
-                }
-            });
+            fetchAirportInfo(originCode)
+                .then(info => {
+                    if (isMounted) {
+                        setOriginAirportInfo(info);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching origin airport:', error);
+                });
         }
         
         // Fetch destination airport info
         if (destCode && destCode !== '---') {
-            fetchAirportInfo(destCode).then(info => {
-                if (isMounted) {
-                    setDestAirportInfo(info);
-                }
-            });
+            fetchAirportInfo(destCode)
+                .then(info => {
+                    if (isMounted) {
+                        setDestAirportInfo(info);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching destination airport:', error);
+                });
         }
         
         return () => {

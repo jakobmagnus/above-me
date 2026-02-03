@@ -35,9 +35,7 @@ export async function fetchAirportInfo(iataCode: string | undefined): Promise<Ai
     // Create the fetch promise
     const fetchPromise = (async () => {
         try {
-            const response = await fetch(`/api/airport/${code}`, {
-                next: { revalidate: 86400 } // Cache for 24 hours
-            });
+            const response = await fetch(`/api/airport/${code}`);
             
             if (!response.ok) {
                 // API returned an error, return null
