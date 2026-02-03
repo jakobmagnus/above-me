@@ -124,21 +124,19 @@ export async function GET(
     }
 
     try {
-        // Try multiple sources in order of preference
-        // Sequential approach is intentional: we only call the next API if the previous one fails
-        // This conserves API quotas and reduces unnecessary network traffic
+        // Try multiple sources with Promise.any for faster fallback
+        // This allows us to get the first successful response instead of waiting sequentially
         let airportInfo: AirportInfo | null = null;
 
-        // 1. Try airportsapi.com (free, no key required)
-        airportInfo = await fetchFromAirportsApi(code);
-        
-        // 2. Try API Ninjas (requires key, if configured)
-        if (!airportInfo) {
-            airportInfo = await fetchFromApiNinjas(code);
-        }
-
-        // 3. Fallback to local database
-        if (!airportInfo) {
+        try {
+            // Race between primary and secondary APIs for faster response
+            airportInfo = await Promise.any([
+                fetchFromAirportsApi(code),
+                // Only include API Ninjas if configured
+                process.env.API_NINJAS_KEY ? fetchFromApiNinjas(code) : Promise.reject(new Error('API Ninjas not configured'))
+            ].filter(p => p !== null));
+        } catch {
+            // All APIs failed, try local database as fallback
             airportInfo = getFromLocalDatabase(code);
         }
 

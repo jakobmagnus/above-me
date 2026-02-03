@@ -12,8 +12,21 @@ export interface AirportInfo {
     lon: number;
 }
 
-// Client-side cache to avoid duplicate fetches
+// Client-side cache to avoid duplicate fetches with LRU eviction
 const clientCache = new Map<string, Promise<AirportInfo | null>>();
+const MAX_CACHE_SIZE = 100; // Limit cache to prevent memory leaks
+
+/**
+ * LRU cache management: Remove oldest entries when cache exceeds max size
+ */
+function evictOldestFromCache() {
+    if (clientCache.size > MAX_CACHE_SIZE) {
+        const firstKey = clientCache.keys().next().value;
+        if (firstKey) {
+            clientCache.delete(firstKey);
+        }
+    }
+}
 
 /**
  * Fetch airport information by IATA code from API
@@ -31,6 +44,9 @@ export async function fetchAirportInfo(iataCode: string | undefined): Promise<Ai
     if (clientCache.has(code)) {
         return clientCache.get(code)!;
     }
+    
+    // Evict oldest entry if cache is full
+    evictOldestFromCache();
     
     // Create the fetch promise
     const fetchPromise = (async () => {

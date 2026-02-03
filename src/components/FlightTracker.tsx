@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import FlightCard from './FlightCard';
 import { Flight } from '@/types/flight';
@@ -114,6 +114,9 @@ export default function FlightTracker() {
         }
     }, []);
 
+    // Memoize filtered flights to avoid redundant filtering on re-renders
+    const validFlights = useMemo(() => flights, [flights]);
+
     const updateLocation = useCallback(() => {
         setLocationName('Updating...');
 
@@ -152,7 +155,7 @@ export default function FlightTracker() {
         <div className="w-full h-screen grid grid-rows-[55vh_1fr] md:grid-rows-1 md:grid-cols-[1fr_380px] overflow-hidden">
             {/* Map View */}
             <div className="w-full h-full min-h-[320px] bg-[#1e1e1e] relative z-0 md:order-1">
-                <FlightMap userLat={userLat} userLon={userLon} flights={flights} />
+                <FlightMap userLat={userLat} userLon={userLon} flights={validFlights} />
             </div>
 
             {/* Sidebar */}
@@ -185,13 +188,13 @@ export default function FlightTracker() {
                         </div>
                     )}
 
-                    {!loading && !error && flights.length === 0 && (
+                    {!loading && !error && validFlights.length === 0 && (
                         <div className="text-center text-gray-500 py-10">
                             No flights found in this area.
                         </div>
                     )}
 
-                    {!loading && !error && flights.map((flight, index) => (
+                    {!loading && !error && validFlights.map((flight, index) => (
                         <FlightCard key={flight.flight_id || index} flight={flight} />
                     ))}
                 </div>
