@@ -152,12 +152,38 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
     const [logoLoaded, setLogoLoaded] = useState(false);
     const [logoError, setLogoError] = useState(false);
 
-    // Extract flight information
-    const flightNumber = flight.callsign || flight.flight_number || flight.flight || 'N/A';
+    // Extract flight information from FR24 API response
+    const flightNumber = flight.flight || flight.callsign || flight.flight_number || 'N/A';
     const originCode = flight.orig_iata || flight.origin_airport_iata || '---';
     const destCode = flight.dest_iata || flight.destination_airport_iata || '---';
     const altitude = flight.alt || flight.altitude || 0;
     const heading = flight.track || flight.heading || 0;
+    
+    // Ground speed from API (in knots), convert to km/h
+    const groundSpeedKnots = flight.gspeed || 0;
+    const groundSpeedKmh = Math.round(groundSpeedKnots * 1.852);
+    
+    // Vertical speed from API (feet per minute)
+    const verticalSpeed = flight.vspeed || 0;
+    
+    // Aircraft type from API
+    const aircraftTypeCode = flight.type || '';
+    const aircraftType = aircraftTypeCode ? (AIRCRAFT_TYPES[aircraftTypeCode] || aircraftTypeCode) : 'Unknown';
+    
+    // Registration from API
+    const registration = flight.reg || flight.registration || '---';
+    
+    // ETA from API
+    const eta = flight.eta;
+    
+    // Data source
+    const dataSource = flight.source || 'Unknown';
+    
+    // Squawk code
+    const squawk = flight.squawk || '---';
+    
+    // Timestamp of position
+    const positionTimestamp = flight.timestamp;
 
     // Get airport info
     const originAirportInfo = getAirportCoordinates(originCode);
@@ -169,8 +195,8 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
     const originTimezone = AIRPORT_TIMEZONES[originCode] || 'UTC';
     const destTimezone = AIRPORT_TIMEZONES[destCode] || 'UTC';
 
-    // Extract airline code
-    let airlineCode = flight.airline_iata || flight.airline_icao;
+    // Extract airline code - prefer painted_as/operating_as from FR24 API
+    let airlineCode = flight.painted_as || flight.operating_as || flight.airline_iata || flight.airline_icao;
     if (!airlineCode && flightNumber && flightNumber !== 'N/A') {
         const match = flightNumber.match(/^([A-Z]{2,3})\d+/);
         if (match) {
@@ -250,8 +276,8 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
         const distanceFromOrigin = haversineDistance(originLat, originLon, currentLat, currentLon);
         const distanceToDestination = haversineDistance(currentLat, currentLon, destLat, destLon);
 
-        // Use actual speed if available (convert from knots if needed)
-        const speedKmh = 800; // Approximate cruise speed
+        // Use actual ground speed from API (already converted to km/h)
+        const speedKmh = groundSpeedKmh > 0 ? groundSpeedKmh : 800;
 
         const progress = calculateFlightProgress(
             currentLat, currentLon,
@@ -267,15 +293,32 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
             timeFromOrigin: estimateTime(distanceFromOrigin, speedKmh),
             timeToDestination: estimateTime(distanceToDestination, speedKmh),
         };
-    }, [originLat, originLon, destLat, destLon, currentLat, currentLon]);
+    }, [originLat, originLon, destLat, destLon, currentLat, currentLon, groundSpeedKmh]);
 
     const progress = flightData?.progress ?? 50;
 
-    // Format altitude
-    const altitudeFormatted = altitude.toLocaleString('en-US', { maximumFractionDigits: 0 }).replace(/,/g, ' ');
-
-    // Estimate speed (assuming typical cruise speed if not available)
-    const speedKmh = 870; // Approximate B737 cruise speed
+    // Format altitude (API returns feet, convert to meters for display)
+    const altitudeMeters = Math.round(altitude * 0.3048);
+    const altitudeFormatted = altitudeMeters.toLocaleString('en-US', { maximumFractionDigits: 0 }).replace(/,/g, ' ');
+    const altitudeFeet = altitude.toLocaleString('en-US', { maximumFractionDigits: 0 }).replace(/,/g, ' ');
+    
+    // Format ETA
+    const formatEta = (etaString?: string): string => {
+        if (!etaString) return '--:--';
+        try {
+            const date = new Date(etaString);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        } catch {
+            return '--:--';
+        }
+    };
+    
+    // Format vertical speed
+    const formatVerticalSpeed = (vspeed: number): string => {
+        if (vspeed === 0) return '0';
+        const sign = vspeed > 0 ? '+' : '';
+        return `${sign}${vspeed.toLocaleString('en-US')}`;
+    };
 
     return (
         <div className="bg-[#111] rounded-2xl overflow-hidden shadow-lg flex flex-col">
@@ -360,47 +403,78 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
 
                 {/* Schedule Info */}
                 <div className="border-t border-gray-800 pt-4 space-y-3">
-                    <div className="flex justify-between">
-                        <div className="flex items-center gap-8">
-                            <span className="text-gray-400 text-sm w-20">Scheduled</span>
-                            <span className="text-white font-medium">--:--</span>
-                        </div>
-                        <div className="flex items-center gap-8">
-                            <span className="text-gray-400 text-sm">Actual</span>
-                            <span className="text-white font-medium">--:--</span>
-                        </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-400 text-sm">Estimated Arrival</span>
+                        <span className="text-white font-medium text-lg">{formatEta(eta)}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <div className="flex items-center gap-8">
-                            <span className="text-gray-400 text-sm w-20">Scheduled</span>
-                            <span className="text-white font-medium">--:--</span>
+                    {eta && (
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400 text-sm">Time to arrival</span>
+                            <span className="text-green-400 font-medium">
+                                {flightData ? flightData.timeToDestination : '---'}
+                            </span>
                         </div>
-                        <div className="flex items-center gap-8">
-                            <span className="text-gray-400 text-sm">Estimated</span>
-                            <span className="text-white font-medium">--:--</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {/* Flight Information */}
                 <div className="border-t border-gray-800 mt-4 pt-4">
-                    <h3 className="text-gray-500 text-sm mb-3 font-medium">Flight information</h3>
+                    <h3 className="text-gray-500 text-sm mb-3 font-medium">Aircraft</h3>
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
-                            <span className="text-white text-sm">Boeing 737-800</span>
+                            <span className="text-gray-400 text-xs block">Type</span>
+                            <span className="text-white text-sm font-medium">{aircraftType}</span>
+                        </div>
+                        <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
+                            <span className="text-gray-400 text-xs block">Registration</span>
+                            <span className="text-white text-sm font-medium">{registration}</span>
                         </div>
                         <div className="bg-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-2">
                             {airlineCountry && <span className="text-lg">{airlineCountry.flag}</span>}
-                            <span className="text-white text-sm">{airlineCountry?.country || 'Unknown'}</span>
+                            <div>
+                                <span className="text-gray-400 text-xs block">Operator</span>
+                                <span className="text-white text-sm">{airlineName}</span>
+                            </div>
                         </div>
                         <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
-                            <span className="text-gray-400 text-xs block">Speed</span>
-                            <span className="text-white text-sm font-medium">{speedKmh} km/h</span>
+                            <span className="text-gray-400 text-xs block">Squawk</span>
+                            <span className="text-white text-sm font-medium">{squawk}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Speed and Position */}
+                <div className="border-t border-gray-800 mt-4 pt-4">
+                    <h3 className="text-gray-500 text-sm mb-3 font-medium">Position & Speed</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
+                            <span className="text-gray-400 text-xs block">Ground Speed</span>
+                            <span className="text-white text-sm font-medium">{groundSpeedKmh} km/h</span>
+                            <span className="text-gray-500 text-xs block">{groundSpeedKnots} kts</span>
                         </div>
                         <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
                             <span className="text-gray-400 text-xs block">Altitude</span>
                             <span className="text-white text-sm font-medium">{altitudeFormatted} m</span>
+                            <span className="text-gray-500 text-xs block">{altitudeFeet} ft</span>
                         </div>
+                        <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
+                            <span className="text-gray-400 text-xs block">Vertical Speed</span>
+                            <span className={`text-sm font-medium ${verticalSpeed > 0 ? 'text-green-400' : verticalSpeed < 0 ? 'text-orange-400' : 'text-white'}`}>
+                                {formatVerticalSpeed(verticalSpeed)} ft/min
+                            </span>
+                        </div>
+                        <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
+                            <span className="text-gray-400 text-xs block">Heading</span>
+                            <span className="text-white text-sm font-medium">{heading}°</span>
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Data Source */}
+                <div className="border-t border-gray-800 mt-4 pt-4">
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>Source: {dataSource}</span>
+                        <span>FR24 ID: {flight.fr24_id || flight.flight_id || '---'}</span>
                     </div>
                 </div>
             </div>

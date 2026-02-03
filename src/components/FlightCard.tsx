@@ -14,11 +14,18 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
     const [logoLoaded, setLogoLoaded] = useState(false);
     const [logoError, setLogoError] = useState(false);
 
-    const flightNumber = flight.callsign || flight.flight_number || flight.flight || 'N/A';
+    const flightNumber = flight.flight || flight.callsign || flight.flight_number || 'N/A';
     const regNumber = flight.reg || flight.registration || '';
     const originCode = flight.orig_iata || flight.origin_airport_iata || '---';
     const destCode = flight.dest_iata || flight.destination_airport_iata || '---';
     const altitude = flight.alt || flight.altitude || 0;
+    
+    // Ground speed from API (knots to km/h)
+    const groundSpeedKnots = flight.gspeed || 0;
+    const groundSpeedKmh = Math.round(groundSpeedKnots * 1.852);
+    
+    // Aircraft type from API
+    const aircraftType = flight.type || '';
     
     // Get airport info for city names
     const originAirportInfo = getAirportCoordinates(originCode);
@@ -68,8 +75,8 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
     // Default to 40% if we can't calculate progress
     const progress = progressPercentage !== null ? progressPercentage : 40;
 
-    // Extract airline code from flight number
-    let airlineCode = flight.airline_iata || flight.airline_icao;
+    // Extract airline code - prefer painted_as/operating_as from FR24 API
+    let airlineCode = flight.painted_as || flight.operating_as || flight.airline_iata || flight.airline_icao;
     if (!airlineCode && flightNumber && flightNumber !== 'N/A') {
         const match = flightNumber.match(/^([A-Z]{2,3})\d+/);
         if (match) {
@@ -118,11 +125,11 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
                 </div>
                 <div className="flex gap-2">
                     <span className="bg-[#222] px-3 py-1.5 rounded-xl text-xs font-medium text-gray-300 font-mono">
-                        {altitude}
+                        {altitude.toLocaleString()} ft
                     </span>
-                    {regNumber && (
+                    {aircraftType && (
                         <span className="bg-[#222] px-3 py-1.5 rounded-xl text-xs font-medium text-gray-300 font-mono">
-                            {regNumber}
+                            {aircraftType}
                         </span>
                     )}
                 </div>
