@@ -129,12 +129,18 @@ export async function GET(
         let airportInfo: AirportInfo | null = null;
 
         try {
-            // Race between primary and secondary APIs for faster response
-            airportInfo = await Promise.any([
-                fetchFromAirportsApi(code),
-                // Only include API Ninjas if configured
-                process.env.API_NINJAS_KEY ? fetchFromApiNinjas(code) : Promise.reject(new Error('API Ninjas not configured'))
-            ].filter(p => p !== null));
+            // Build array of API promises to race
+            const apiPromises: Promise<AirportInfo | null>[] = [
+                fetchFromAirportsApi(code)
+            ];
+            
+            // Only include API Ninjas if configured
+            if (process.env.API_NINJAS_KEY) {
+                apiPromises.push(fetchFromApiNinjas(code));
+            }
+            
+            // Race between available APIs for faster response
+            airportInfo = await Promise.any(apiPromises);
         } catch {
             // All APIs failed, try local database as fallback
             airportInfo = getFromLocalDatabase(code);
