@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AIRPORT_COORDINATES, AirportCoordinates } from '@/utils/airportCoordinates';
+import { AIRPORT_COORDINATES } from '@/utils/airportCoordinates';
 
 export interface AirportInfo {
     iata: string;
