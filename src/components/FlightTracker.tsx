@@ -16,8 +16,8 @@ const FlightMap = dynamic(() => import('./FlightMap'), {
 });
 
 const BOUNDS_OFFSET = 0.5;
-const DEFAULT_LAT = 59.3539;
-const DEFAULT_LON = 18.0115;
+const DEFAULT_LAT = 59.6519;
+const DEFAULT_LON = 17.9186;
 
 // Normalize and validate flight data
 function normalizeValue(value: string | null | undefined): string {
@@ -131,14 +131,14 @@ export default function FlightTracker() {
                     // Fallback to default
                     setUserLat(DEFAULT_LAT);
                     setUserLon(DEFAULT_LON);
-                    setLocationName('Stockholm (default)');
+                    setLocationName('Arlanda (default)');
                     fetchFlights(DEFAULT_LAT, DEFAULT_LON);
                 }
             );
         } else {
             setUserLat(DEFAULT_LAT);
             setUserLon(DEFAULT_LON);
-            setLocationName('Stockholm (default)');
+            setLocationName('Arlanda (default)');
             fetchFlights(DEFAULT_LAT, DEFAULT_LON);
         }
     }, [fetchLocationName, fetchFlights]);
