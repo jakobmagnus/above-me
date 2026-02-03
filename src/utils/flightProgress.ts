@@ -11,10 +11,13 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     const dLat = toRadians(lat2 - lat1);
     const dLon = toRadians(lon2 - lon1);
     
-    const a = 
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    // Cache intermediate calculations for better performance
+    const sinDLat2 = Math.sin(dLat / 2);
+    const sinDLon2 = Math.sin(dLon / 2);
+    const cosLat1 = Math.cos(toRadians(lat1));
+    const cosLat2 = Math.cos(toRadians(lat2));
+    
+    const a = sinDLat2 * sinDLat2 + cosLat1 * cosLat2 * sinDLon2 * sinDLon2;
     
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;

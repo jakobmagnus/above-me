@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Flight } from '@/types/flight';
 import { calculateFlightProgress } from '@/utils/flightProgress';
 import { getAirportCoordinates } from '@/utils/airportCoordinates';
@@ -50,62 +50,79 @@ export default function FlightCard({ flight }: FlightCardProps) {
         };
     }, [originCode, destCode]);
     
-    // Get city names with fallback priority:
-    // 1. From flight API data
-    // 2. From airport API
-    // 3. From local database (fallback)
-    const originLocalInfo = getAirportCoordinates(originCode);
-    const destLocalInfo = getAirportCoordinates(destCode);
+    // Memoize local airport lookups to avoid redundant calls
+    const originLocalInfo = useMemo(
+        () => (originCode && originCode !== '---' ? getAirportCoordinates(originCode) : null),
+        [originCode]
+    );
+    const destLocalInfo = useMemo(
+        () => (destCode && destCode !== '---' ? getAirportCoordinates(destCode) : null),
+        [destCode]
+    );
     
-    const originCity = flight.origin_city || flight.origin_airport_name || originAirportInfo?.city || originLocalInfo?.city || '';
-    const destCity = flight.destination_city || flight.destination_airport_name || destAirportInfo?.city || destLocalInfo?.city || '';
+    // Memoize city names with fallback priority
+    const originCity = useMemo(
+        () => flight.origin_city || flight.origin_airport_name || originAirportInfo?.city || originLocalInfo?.city || '',
+        [flight.origin_city, flight.origin_airport_name, originAirportInfo?.city, originLocalInfo?.city]
+    );
+    const destCity = useMemo(
+        () => flight.destination_city || flight.destination_airport_name || destAirportInfo?.city || destLocalInfo?.city || '',
+        [flight.destination_city, flight.destination_airport_name, destAirportInfo?.city, destLocalInfo?.city]
+    );
 
-    // Calculate flight progress
-    const currentLat = flight.lat ?? flight.latitude;
-    const currentLon = flight.lon ?? flight.longitude;
-    
-    // Get origin and destination coordinates from API or lookup
-    let originLat = flight.origin_lat;
-    let originLon = flight.origin_lon;
-    let destLat = flight.dest_lat;
-    let destLon = flight.dest_lon;
+    // Memoize coordinate resolution and progress calculation
+    const progress = useMemo(() => {
+        const currentLat = flight.lat ?? flight.latitude;
+        const currentLon = flight.lon ?? flight.longitude;
+        
+        // Get origin and destination coordinates from API or lookup
+        let originLat = flight.origin_lat;
+        let originLon = flight.origin_lon;
+        let destLat = flight.dest_lat;
+        let destLon = flight.dest_lon;
 
-    // If coordinates not in flight data, look them up from API or fallback to local database
-    if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
-        // Try API data first, fallback to local database
-        if (originAirportInfo) {
-            originLat = originAirportInfo.lat;
-            originLon = originAirportInfo.lon;
-        } else if (originLocalInfo) {
-            originLat = originLocalInfo.lat;
-            originLon = originLocalInfo.lon;
+        // If coordinates not in flight data, look them up from API or fallback to local database
+        if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
+            // Try API data first, fallback to local database
+            if (originAirportInfo) {
+                originLat = originAirportInfo.lat;
+                originLon = originAirportInfo.lon;
+            } else if (originLocalInfo) {
+                originLat = originLocalInfo.lat;
+                originLon = originLocalInfo.lon;
+            }
         }
-    }
 
-    if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
-        // Try API data first, fallback to local database
-        if (destAirportInfo) {
-            destLat = destAirportInfo.lat;
-            destLon = destAirportInfo.lon;
-        } else if (destLocalInfo) {
-            destLat = destLocalInfo.lat;
-            destLon = destLocalInfo.lon;
+        if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
+            // Try API data first, fallback to local database
+            if (destAirportInfo) {
+                destLat = destAirportInfo.lat;
+                destLon = destAirportInfo.lon;
+            } else if (destLocalInfo) {
+                destLat = destLocalInfo.lat;
+                destLon = destLocalInfo.lon;
+            }
         }
-    }
 
-    let progressPercentage: number | null = null;
-    if (currentLat !== undefined && currentLon !== undefined &&
-        originLat !== undefined && originLon !== undefined &&
-        destLat !== undefined && destLon !== undefined) {
-        progressPercentage = calculateFlightProgress(
-            currentLat, currentLon,
-            originLat, originLon,
-            destLat, destLon
-        );
-    }
+        let progressPercentage: number | null = null;
+        if (currentLat !== undefined && currentLon !== undefined &&
+            originLat !== undefined && originLon !== undefined &&
+            destLat !== undefined && destLon !== undefined) {
+            progressPercentage = calculateFlightProgress(
+                currentLat, currentLon,
+                originLat, originLon,
+                destLat, destLon
+            );
+        }
 
-    // Default to 40% if we can't calculate progress
-    const progress = progressPercentage !== null ? progressPercentage : 40;
+        // Default to 40% if we can't calculate progress
+        return progressPercentage !== null ? progressPercentage : 40;
+    }, [
+        flight.lat, flight.latitude, flight.lon, flight.longitude,
+        flight.origin_lat, flight.origin_lon, flight.dest_lat, flight.dest_lon,
+        originCode, destCode, originAirportInfo, destAirportInfo, 
+        originLocalInfo, destLocalInfo
+    ]);
 
     // Extract airline code from flight number
     let airlineCode = flight.airline_iata || flight.airline_icao;
