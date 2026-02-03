@@ -28,20 +28,15 @@ export default function FlightCard({ flight }: FlightCardProps) {
         
         const fetchAirportData = async () => {
             try {
-                // Fetch origin airport info
-                if (originCode && originCode !== '---') {
-                    const originInfo = await fetchAirportInfo(originCode);
-                    if (isMounted) {
-                        setOriginAirportInfo(originInfo);
-                    }
-                }
+                // Fetch both airports concurrently for better performance
+                const [originInfo, destInfo] = await Promise.all([
+                    originCode && originCode !== '---' ? fetchAirportInfo(originCode) : Promise.resolve(null),
+                    destCode && destCode !== '---' ? fetchAirportInfo(destCode) : Promise.resolve(null),
+                ]);
                 
-                // Fetch destination airport info
-                if (destCode && destCode !== '---') {
-                    const destInfo = await fetchAirportInfo(destCode);
-                    if (isMounted) {
-                        setDestAirportInfo(destInfo);
-                    }
+                if (isMounted) {
+                    setOriginAirportInfo(originInfo);
+                    setDestAirportInfo(destInfo);
                 }
             } catch (error) {
                 console.error('Error fetching airport info:', error);

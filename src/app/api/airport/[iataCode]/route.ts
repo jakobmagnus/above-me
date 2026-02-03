@@ -11,6 +11,9 @@ export interface AirportInfo {
 }
 
 // In-memory cache to reduce API calls
+// Note: This cache is per-instance and will be lost on serverless cold starts
+// or in multi-instance deployments. For production with high traffic, consider
+// using a shared cache solution (e.g., Redis, Vercel KV) for better performance.
 const airportCache = new Map<string, { data: AirportInfo | null; timestamp: number }>();
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
@@ -122,6 +125,8 @@ export async function GET(
 
     try {
         // Try multiple sources in order of preference
+        // Sequential approach is intentional: we only call the next API if the previous one fails
+        // This conserves API quotas and reduces unnecessary network traffic
         let airportInfo: AirportInfo | null = null;
 
         // 1. Try airportsapi.com (free, no key required)
