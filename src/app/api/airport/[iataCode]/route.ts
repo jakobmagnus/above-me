@@ -124,25 +124,33 @@ export async function GET(
     }
 
     try {
-        // Try multiple sources with Promise.any for faster fallback
-        // This allows us to get the first successful response instead of waiting sequentially
+        // Try multiple sources in parallel and use the first successful (non-null) response
+        // This is faster than sequential calls while preserving fallback behavior
         let airportInfo: AirportInfo | null = null;
 
-        try {
-            // Build array of API promises to race
-            const apiPromises: Promise<AirportInfo | null>[] = [
-                fetchFromAirportsApi(code)
-            ];
-            
-            // Only include API Ninjas if configured
-            if (process.env.API_NINJAS_KEY) {
-                apiPromises.push(fetchFromApiNinjas(code));
+        // Build array of API promises to execute in parallel
+        const apiPromises: Promise<AirportInfo | null>[] = [
+            fetchFromAirportsApi(code)
+        ];
+        
+        // Only include API Ninjas if configured
+        if (process.env.API_NINJAS_KEY) {
+            apiPromises.push(fetchFromApiNinjas(code));
+        }
+        
+        // Execute all APIs in parallel and wait for all to complete
+        const results = await Promise.allSettled(apiPromises);
+        
+        // Find the first successful (fulfilled and non-null) result
+        for (const result of results) {
+            if (result.status === 'fulfilled' && result.value !== null) {
+                airportInfo = result.value;
+                break;
             }
-            
-            // Race between available APIs for faster response
-            airportInfo = await Promise.any(apiPromises);
-        } catch {
-            // All APIs failed, try local database as fallback
+        }
+        
+        // If no API succeeded, fallback to local database
+        if (!airportInfo) {
             airportInfo = getFromLocalDatabase(code);
         }
 
