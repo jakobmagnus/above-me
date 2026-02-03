@@ -1,3 +1,5 @@
+import { AIRPORT_CITIES } from './airport-cities.js';
+
 const FLIGHT_LIST = document.getElementById("flight-list");
 const MAP_VIEW = document.getElementById("map-view");
 const TEMPLATE = document.getElementById("flight-card-template");
@@ -280,10 +282,17 @@ function renderFlights(data) {
         clone.querySelector(".origin-code").textContent = orig;
         clone.querySelector(".dest-code").textContent = dest;
         
-        // Try to find city names if available in common FR24 property names
-        // Often these are not in the lightweight feed, so fallback to empty
-        const origCity = flight.origin_city || flight.origin_airport_name || ""; 
-        const destCity = flight.destination_city || flight.destination_airport_name || "";
+        // Get city names: try from API first, then fallback to mapping
+        let origCity = flight.origin_city || flight.origin_airport_name || ""; 
+        let destCity = flight.destination_city || flight.destination_airport_name || "";
+        
+        // Use airport code mapping if city name not provided by API
+        if (!origCity && orig !== "---") {
+            origCity = AIRPORT_CITIES[orig] || "";
+        }
+        if (!destCity && dest !== "---") {
+            destCity = AIRPORT_CITIES[dest] || "";
+        }
         
         clone.querySelector(".origin-city").textContent = origCity;
         clone.querySelector(".dest-city").textContent = destCity;
