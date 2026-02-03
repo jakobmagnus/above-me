@@ -26,31 +26,29 @@ export default function FlightCard({ flight }: FlightCardProps) {
     useEffect(() => {
         let isMounted = true;
         
-        // Fetch origin airport info
-        if (originCode && originCode !== '---') {
-            fetchAirportInfo(originCode)
-                .then(info => {
+        const fetchAirportData = async () => {
+            try {
+                // Fetch origin airport info
+                if (originCode && originCode !== '---') {
+                    const originInfo = await fetchAirportInfo(originCode);
                     if (isMounted) {
-                        setOriginAirportInfo(info);
+                        setOriginAirportInfo(originInfo);
                     }
-                })
-                .catch(error => {
-                    console.error('Error fetching origin airport:', error);
-                });
-        }
+                }
+                
+                // Fetch destination airport info
+                if (destCode && destCode !== '---') {
+                    const destInfo = await fetchAirportInfo(destCode);
+                    if (isMounted) {
+                        setDestAirportInfo(destInfo);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching airport info:', error);
+            }
+        };
         
-        // Fetch destination airport info
-        if (destCode && destCode !== '---') {
-            fetchAirportInfo(destCode)
-                .then(info => {
-                    if (isMounted) {
-                        setDestAirportInfo(info);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching destination airport:', error);
-                });
-        }
+        fetchAirportData();
         
         return () => {
             isMounted = false;
