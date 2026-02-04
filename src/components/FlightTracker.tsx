@@ -54,6 +54,8 @@ export default function FlightTracker() {
     const [error, setError] = useState<string | null>(null);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [mapBounds, setMapBounds] = useState<string | null>(null);
+    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+    const [cachedFlights, setCachedFlights] = useState<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
 
     const handleBoundsChange = useCallback((bounds: string) => {
         setMapBounds(bounds);
@@ -126,8 +128,36 @@ export default function FlightTracker() {
     }, []);
 
     const fetchFlights = useCallback(async (bounds: string) => {
+        const now = Date.now();
+        const CACHE_DURATION = 15000; // 15 seconds client-side cache
+        const MIN_REQUEST_INTERVAL = 10000; // Minimum 10 seconds between requests
+
+        // Check if we have cached data for these bounds
+        if (cachedFlights && cachedFlights.bounds === bounds) {
+            const cacheAge = now - cachedFlights.timestamp;
+            if (cacheAge < CACHE_DURATION) {
+                // Use cached data
+                setFlights(cachedFlights.flights);
+                setLoading(false);
+                return;
+            }
+        }
+
+        // Rate limiting: prevent too frequent requests
+        const timeSinceLastFetch = now - lastFetchTime;
+        if (timeSinceLastFetch < MIN_REQUEST_INTERVAL) {
+            console.log('Rate limit: waiting before next request');
+            // Use cached data if available
+            if (cachedFlights) {
+                setFlights(cachedFlights.flights);
+                setLoading(false);
+            }
+            return;
+        }
+
         setLoading(true);
         setError(null);
+        setLastFetchTime(now);
 
         try {
             const response = await fetch(`/api/flights?bounds=${bounds}`);
@@ -154,13 +184,20 @@ export default function FlightTracker() {
             const validFlights = flightList.filter(isFlightValid);
 
             setFlights(validFlights);
+            
+            // Update cache
+            setCachedFlights({
+                bounds,
+                flights: validFlights,
+                timestamp: now
+            });
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [cachedFlights, lastFetchTime]);
 
     const updateLocation = useCallback(() => {
         setLocationName('Updating...');
