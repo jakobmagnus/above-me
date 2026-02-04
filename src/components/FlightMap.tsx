@@ -84,10 +84,10 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
 
         // Add new markers
         flights.forEach(flight => {
-            const lat = flight.lat || flight.latitude;
-            const lon = flight.lon || flight.longitude;
+            const lat = flight.lat ?? flight.latitude;
+            const lon = flight.lon ?? flight.longitude;
             const heading = flight.track || flight.heading || 0;
-            const flightNum = flight.callsign || flight.flight_number || 'Flight';
+            const flightNum = flight.flight || flight.callsign || flight.flight_number || 'Flight';
             const orig = flight.orig_iata || flight.origin_airport_iata || '?';
             const dest = flight.dest_iata || flight.destination_airport_iata || '?';
 
@@ -95,7 +95,7 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
             const isSelected = (selectedFlightId && flight.flight_id === selectedFlightId) ||
                 (selectedCallsign && (flight.callsign === selectedCallsign || flight.flight_number === selectedCallsign || flight.flight === selectedCallsign));
 
-            if (lat && lon) {
+            if (lat != null && lon != null) {
                 const color = isSelected ? '#facc15' : '#f97316'; // Yellow when selected, orange otherwise
                 const size = isSelected ? 28 : 20;
                 
