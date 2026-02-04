@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import FlightCard from './FlightCard';
 import FlightDetail from './FlightDetail';
@@ -54,8 +54,10 @@ export default function FlightTracker() {
     const [error, setError] = useState<string | null>(null);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [mapBounds, setMapBounds] = useState<string | null>(null);
-    const [lastFetchTime, setLastFetchTime] = useState<number>(0);
-    const [cachedFlights, setCachedFlights] = useState<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
+    
+    // Use refs to avoid re-creating fetchFlights callback
+    const lastFetchTimeRef = useRef<number>(0);
+    const cachedFlightsRef = useRef<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
 
     const handleBoundsChange = useCallback((bounds: string) => {
         setMapBounds(bounds);
@@ -133,31 +135,30 @@ export default function FlightTracker() {
         const MIN_REQUEST_INTERVAL = 10000; // Minimum 10 seconds between requests
 
         // Check if we have cached data for these bounds
-        if (cachedFlights && cachedFlights.bounds === bounds) {
-            const cacheAge = now - cachedFlights.timestamp;
+        const cachedData = cachedFlightsRef.current;
+        if (cachedData && cachedData.bounds === bounds) {
+            const cacheAge = now - cachedData.timestamp;
             if (cacheAge < CACHE_DURATION) {
-                // Use cached data
-                setFlights(cachedFlights.flights);
-                setLoading(false);
+                // Use cached data without changing loading state
+                setFlights(cachedData.flights);
                 return;
             }
         }
 
         // Rate limiting: prevent too frequent requests
-        const timeSinceLastFetch = now - lastFetchTime;
+        const timeSinceLastFetch = now - lastFetchTimeRef.current;
         if (timeSinceLastFetch < MIN_REQUEST_INTERVAL) {
             console.log('Rate limit: waiting before next request');
-            // Use cached data if available
-            if (cachedFlights) {
-                setFlights(cachedFlights.flights);
-                setLoading(false);
+            // Use cached data if available, without changing loading state
+            if (cachedData) {
+                setFlights(cachedData.flights);
             }
             return;
         }
 
         setLoading(true);
         setError(null);
-        setLastFetchTime(now);
+        lastFetchTimeRef.current = now;
 
         try {
             const response = await fetch(`/api/flights?bounds=${bounds}`);
@@ -186,18 +187,18 @@ export default function FlightTracker() {
             setFlights(validFlights);
             
             // Update cache
-            setCachedFlights({
+            cachedFlightsRef.current = {
                 bounds,
                 flights: validFlights,
                 timestamp: now
-            });
+            };
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
         } finally {
             setLoading(false);
         }
-    }, [cachedFlights, lastFetchTime]);
+    }, []);
 
     const updateLocation = useCallback(() => {
         setLocationName('Updating...');
