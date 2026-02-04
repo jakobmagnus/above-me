@@ -158,7 +158,6 @@ export default function FlightTracker() {
 
         setLoading(true);
         setError(null);
-        lastFetchTimeRef.current = now;
 
         try {
             const response = await fetch(`/api/flights?bounds=${bounds}`);
@@ -186,12 +185,16 @@ export default function FlightTracker() {
 
             setFlights(validFlights);
             
-            // Update cache
+            // Update cache with fresh timestamp after successful fetch
+            const fetchCompletedTime = Date.now();
             cachedFlightsRef.current = {
                 bounds,
                 flights: validFlights,
-                timestamp: now
+                timestamp: fetchCompletedTime
             };
+            
+            // Update last fetch time only after successful response
+            lastFetchTimeRef.current = fetchCompletedTime;
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
