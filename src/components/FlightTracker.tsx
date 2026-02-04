@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import FlightCard from './FlightCard';
+import FlightDetail from './FlightDetail';
 import { Flight } from '@/types/flight';
 
 // Dynamically import the map component to avoid SSR issues with Leaflet
@@ -52,6 +53,51 @@ export default function FlightTracker() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+
+    const handleFlightSelect = useCallback((flight: Flight) => {
+        setSelectedFlight(flight);
+    }, []);
+
+    const handleCloseDetail = useCallback(() => {
+        setSelectedFlight(null);
+    }, []);
+
+    // Keep selectedFlight in sync with the latest flights list
+    useEffect(() => {
+        if (!selectedFlight) {
+            return;
+        }
+
+        const selectedId = normalizeValue(
+            selectedFlight.callsign ||
+            selectedFlight.flight_number ||
+            selectedFlight.flight
+        );
+
+        if (!selectedId) {
+            // If we can't identify the flight reliably, clear the selection
+            setSelectedFlight(null);
+            return;
+        }
+
+        const updatedFlight = flights.find((flight) => {
+            const currentId = normalizeValue(
+                flight.callsign ||
+                flight.flight_number ||
+                flight.flight
+            );
+            return currentId === selectedId;
+        });
+
+        if (!updatedFlight) {
+            // Flight no longer present in the list; clear selection
+            setSelectedFlight(null);
+        } else if (updatedFlight !== selectedFlight) {
+            // Update to the fresh object from the latest flights array
+            setSelectedFlight(updatedFlight);
+        }
+    }, [flights, selectedFlight]);
 
     const fetchLocationName = useCallback(async (lat: number, lon: number) => {
         try {
@@ -152,49 +198,68 @@ export default function FlightTracker() {
         <div className="w-full h-screen grid grid-rows-[55vh_1fr] md:grid-rows-1 md:grid-cols-[1fr_380px] overflow-hidden">
             {/* Map View */}
             <div className="w-full h-full min-h-[320px] bg-[#1e1e1e] relative z-0 md:order-1">
-                <FlightMap userLat={userLat} userLon={userLon} flights={flights} />
+                <FlightMap 
+                    userLat={userLat} 
+                    userLon={userLon} 
+                    flights={flights}
+                    onFlightSelect={handleFlightSelect}
+                    selectedFlight={selectedFlight}
+                />
             </div>
 
             {/* Sidebar */}
             <div className="bg-black p-5 overflow-y-auto max-h-[calc(100vh-55vh)] md:max-h-screen md:h-screen md:w-[380px] md:border-l md:border-gray-800 md:order-2">
-                {/* Header */}
-                <div className="flex justify-between items-center mb-5">
-                    <h1 className="text-2xl md:text-[28px] font-bold text-white">{locationName}</h1>
-                    <button
-                        onClick={updateLocation}
-                        className="flex items-center gap-2 bg-transparent border border-gray-700 rounded-full px-4 py-2 text-white text-sm hover:bg-gray-900 transition-colors"
-                    >
-                        <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
-                        </svg>
-                        <span className="hidden sm:inline">Update location</span>
-                    </button>
-                </div>
+                {/* Header - only show when no flight selected */}
+                {!selectedFlight && (
+                    <div className="flex justify-between items-center mb-5">
+                        <h1 className="text-2xl md:text-[28px] font-bold text-white">{locationName}</h1>
+                        <button
+                            onClick={updateLocation}
+                            className="flex items-center gap-2 bg-transparent border border-gray-700 rounded-full px-4 py-2 text-white text-sm hover:bg-gray-900 transition-colors"
+                        >
+                            <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z" />
+                            </svg>
+                            <span className="hidden sm:inline">Update location</span>
+                        </button>
+                    </div>
+                )}
 
-                {/* Flight List */}
-                <div className="flex flex-col gap-3">
-                    {loading && (
-                        <div className="text-center text-gray-500 py-10">
-                            Locating planes above you...
-                        </div>
-                    )}
+                {/* Flight Detail View */}
+                {selectedFlight && (
+                    <FlightDetail flight={selectedFlight} onClose={handleCloseDetail} />
+                )}
 
-                    {error && (
-                        <div className="text-center text-gray-500 py-10">
-                            Failed to load flights: {error}
-                        </div>
-                    )}
+                {/* Flight List - only show when no flight selected */}
+                {!selectedFlight && (
+                    <div className="flex flex-col gap-3">
+                        {loading && (
+                            <div className="text-center text-gray-500 py-10">
+                                Locating planes above you...
+                            </div>
+                        )}
 
-                    {!loading && !error && flights.length === 0 && (
-                        <div className="text-center text-gray-500 py-10">
-                            No flights found in this area.
-                        </div>
-                    )}
+                        {error && (
+                            <div className="text-center text-gray-500 py-10">
+                                Failed to load flights: {error}
+                            </div>
+                        )}
 
-                    {!loading && !error && flights.map((flight, index) => (
-                        <FlightCard key={flight.flight_id || index} flight={flight} />
-                    ))}
-                </div>
+                        {!loading && !error && flights.length === 0 && (
+                            <div className="text-center text-gray-500 py-10">
+                                No flights found in this area.
+                            </div>
+                        )}
+
+                        {!loading && !error && flights.map((flight, index) => (
+                            <FlightCard 
+                                key={flight.flight_id || index} 
+                                flight={flight}
+                                onClick={() => handleFlightSelect(flight)}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
