@@ -55,9 +55,10 @@ export default function FlightTracker() {
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [mapBounds, setMapBounds] = useState<string | null>(null);
     
-    // Use refs to avoid re-creating fetchFlights callback
+    // Use refs to persist cached flights and last-fetch metadata across renders
     const lastFetchTimeRef = useRef<number>(0);
     const cachedFlightsRef = useRef<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
+    const inFlightRef = useRef<boolean>(false);
 
     const handleBoundsChange = useCallback((bounds: string) => {
         setMapBounds(bounds);
@@ -141,21 +142,34 @@ export default function FlightTracker() {
             if (cacheAge < CACHE_DURATION) {
                 // Use cached data without changing loading state
                 setFlights(cachedData.flights);
+                setError(null);
                 return;
             }
+        }
+
+        // Prevent concurrent requests
+        if (inFlightRef.current) {
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Request already in flight, skipping');
+            }
+            return;
         }
 
         // Rate limiting: prevent too frequent requests
         const timeSinceLastFetch = now - lastFetchTimeRef.current;
         if (timeSinceLastFetch < MIN_REQUEST_INTERVAL) {
-            console.log('Rate limit: waiting before next request');
-            // Use cached data if available, without changing loading state
-            if (cachedData) {
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Rate limit: waiting before next request');
+            }
+            // Use cached data for the same bounds if available, without changing loading state
+            if (cachedData && cachedData.bounds === bounds) {
                 setFlights(cachedData.flights);
+                setError(null);
             }
             return;
         }
 
+        inFlightRef.current = true;
         setLoading(true);
         setError(null);
 
@@ -199,6 +213,7 @@ export default function FlightTracker() {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
         } finally {
+            inFlightRef.current = false;
             setLoading(false);
         }
     }, []);
