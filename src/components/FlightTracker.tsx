@@ -55,7 +55,7 @@ export default function FlightTracker() {
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [mapBounds, setMapBounds] = useState<string | null>(null);
     
-    // Use refs to persist cached flights and last-fetch metadata across renders
+    // Use refs to persist cache state, fetch timing, and request status across renders
     const lastFetchTimeRef = useRef<number>(0);
     const cachedFlightsRef = useRef<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
     const inFlightRef = useRef<boolean>(false);
