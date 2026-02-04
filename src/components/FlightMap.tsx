@@ -40,9 +40,14 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
 
         console.log('Fetching trail for flight:', flightId);
 
+        // Create an AbortController to cancel the fetch if the selected flight changes
+        const abortController = new AbortController();
+
         const fetchTrail = async () => {
             try {
-                const response = await fetch(`/api/flights/${flightId}/trail`);
+                const response = await fetch(`/api/flights/${flightId}/trail`, {
+                    signal: abortController.signal
+                });
                 console.log('Trail API response status:', response.status);
                 
                 if (response.ok) {
@@ -75,12 +80,22 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
                     setFlightTrail([]);
                 }
             } catch (error) {
+                // Ignore AbortError as it's expected when the effect is cleaned up
+                if (error instanceof Error && error.name === 'AbortError') {
+                    console.log('Fetch aborted for flight:', flightId);
+                    return;
+                }
                 console.error('Failed to fetch flight trail:', error);
                 setFlightTrail([]);
             }
         };
 
         fetchTrail();
+
+        // Cleanup function to abort the fetch if the selected flight changes
+        return () => {
+            abortController.abort();
+        };
     }, [selectedFlight?.fr24_id, selectedFlight?.flight_id, selectedFlight]);
 
     // Update trail on map when flightTrail changes
