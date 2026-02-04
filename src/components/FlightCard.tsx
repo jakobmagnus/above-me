@@ -15,14 +15,9 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
     const [logoError, setLogoError] = useState(false);
 
     const flightNumber = flight.flight || flight.callsign || flight.flight_number || 'N/A';
-    const regNumber = flight.reg || flight.registration || '';
     const originCode = flight.orig_iata || flight.origin_airport_iata || '---';
     const destCode = flight.dest_iata || flight.destination_airport_iata || '---';
     const altitude = flight.alt || flight.altitude || 0;
-    
-    // Ground speed from API (knots to km/h)
-    const groundSpeedKnots = flight.gspeed || 0;
-    const groundSpeedKmh = Math.round(groundSpeedKnots * 1.852);
     
     // Aircraft type from API
     const aircraftType = flight.type || '';
@@ -91,8 +86,9 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
         : null;
 
     return (
-        <div 
-            className="bg-[#111] rounded-2xl p-5 flex flex-col gap-6 shadow-lg cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+        <button 
+            type="button"
+            className="bg-[#111] rounded-2xl p-5 flex flex-col gap-6 shadow-lg w-full text-left cursor-pointer hover:bg-[#1a1a1a] transition-colors"
             onClick={onClick}
         >
             {/* Card Header */}
@@ -173,6 +169,6 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
                     <span className="text-3xl md:text-4xl font-light tracking-wide text-white">{destCode}</span>
                 </div>
             </div>
-        </div>
+        </button>
     );
 }

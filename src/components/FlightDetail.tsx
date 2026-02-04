@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Flight } from '@/types/flight';
 import { calculateFlightProgress } from '@/utils/flightProgress';
 import { getAirportCoordinates } from '@/utils/airportCoordinates';
@@ -142,16 +142,13 @@ function formatDistance(km: number): string {
 
 function estimateTime(distanceKm: number, speedKmh: number): string {
     if (speedKmh <= 0) speedKmh = 800; // Default cruise speed
-    const hours = distanceKm / speedKmh;
-    const h = Math.floor(hours);
-    const m = Math.round((hours - h) * 60);
+    const totalMinutes = Math.round((distanceKm / speedKmh) * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     return `${h}h ${m}m`;
 }
 
 export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
-    const [logoLoaded, setLogoLoaded] = useState(false);
-    const [logoError, setLogoError] = useState(false);
-
     // Extract flight information from FR24 API response
     const flightNumber = flight.flight || flight.callsign || flight.flight_number || 'N/A';
     const originCode = flight.orig_iata || flight.origin_airport_iata || '---';
@@ -181,9 +178,6 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
     
     // Squawk code
     const squawk = flight.squawk || '---';
-    
-    // Timestamp of position
-    const positionTimestamp = flight.timestamp;
 
     // Get airport info
     const originAirportInfo = getAirportCoordinates(originCode);
@@ -250,20 +244,14 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
     const airlineName = airlineCode ? AIRLINE_NAMES[airlineCode] || airlineCode : 'Unknown Airline';
     const airlineCountry = airlineCode ? AIRLINE_COUNTRIES[airlineCode] : null;
 
-    const logoUrl = airlineCode
-        ? airlineCode.length === 2
-            ? `https://pics.avs.io/200/200/${airlineCode}.png`
-            : `https://www.flightaware.com/images/airline_logos/90p/${airlineCode}.png`
-        : null;
-
     // Calculate coordinates
     const currentLat = flight.lat ?? flight.latitude ?? 0;
     const currentLon = flight.lon ?? flight.longitude ?? 0;
 
-    let originLat = flight.origin_lat ?? originAirportInfo?.lat;
-    let originLon = flight.origin_lon ?? originAirportInfo?.lon;
-    let destLat = flight.dest_lat ?? destAirportInfo?.lat;
-    let destLon = flight.dest_lon ?? destAirportInfo?.lon;
+    const originLat = flight.origin_lat ?? originAirportInfo?.lat;
+    const originLon = flight.origin_lon ?? originAirportInfo?.lon;
+    const destLat = flight.dest_lat ?? destAirportInfo?.lat;
+    const destLon = flight.dest_lon ?? destAirportInfo?.lon;
 
     // Calculate distances and progress
     const flightData = useMemo(() => {
@@ -328,6 +316,7 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
                     <button
                         onClick={onClose}
                         className="text-gray-400 hover:text-white transition-colors"
+                        aria-label="Close flight details"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -338,11 +327,6 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
                         <p className="text-sm text-gray-400">{airlineName}</p>
                     </div>
                 </div>
-                <button className="text-gray-400 hover:text-white transition-colors">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                    </svg>
-                </button>
             </div>
 
             {/* Route Display */}

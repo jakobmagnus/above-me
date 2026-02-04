@@ -63,6 +63,42 @@ export default function FlightTracker() {
         setSelectedFlight(null);
     }, []);
 
+    // Keep selectedFlight in sync with the latest flights list
+    useEffect(() => {
+        if (!selectedFlight) {
+            return;
+        }
+
+        const selectedId = normalizeValue(
+            selectedFlight.callsign ||
+            selectedFlight.flight_number ||
+            selectedFlight.flight
+        );
+
+        if (!selectedId) {
+            // If we can't identify the flight reliably, clear the selection
+            setSelectedFlight(null);
+            return;
+        }
+
+        const updatedFlight = flights.find((flight) => {
+            const currentId = normalizeValue(
+                flight.callsign ||
+                flight.flight_number ||
+                flight.flight
+            );
+            return currentId === selectedId;
+        });
+
+        if (!updatedFlight) {
+            // Flight no longer present in the list; clear selection
+            setSelectedFlight(null);
+        } else if (updatedFlight !== selectedFlight) {
+            // Update to the fresh object from the latest flights array
+            setSelectedFlight(updatedFlight);
+        }
+    }, [flights, selectedFlight]);
+
     const fetchLocationName = useCallback(async (lat: number, lon: number) => {
         try {
             const response = await fetch(
