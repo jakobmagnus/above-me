@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import FlightCard from './FlightCard';
 import FlightDetail from './FlightDetail';
@@ -54,6 +54,11 @@ export default function FlightTracker() {
     const [error, setError] = useState<string | null>(null);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
     const [mapBounds, setMapBounds] = useState<string | null>(null);
+    
+    // Use refs to persist cache state, fetch timing, and request status across renders
+    const lastFetchTimeRef = useRef<number>(0);
+    const cachedFlightsRef = useRef<{ bounds: string; flights: Flight[]; timestamp: number } | null>(null);
+    const inFlightRef = useRef<boolean>(false);
 
     const handleBoundsChange = useCallback((bounds: string) => {
         setMapBounds(bounds);
@@ -126,6 +131,45 @@ export default function FlightTracker() {
     }, []);
 
     const fetchFlights = useCallback(async (bounds: string) => {
+        const now = Date.now();
+        const CACHE_DURATION = 15000; // 15 seconds client-side cache
+        const MIN_REQUEST_INTERVAL = 10000; // Minimum 10 seconds between requests
+
+        // Check if we have cached data for these bounds
+        const cachedData = cachedFlightsRef.current;
+        if (cachedData && cachedData.bounds === bounds) {
+            const cacheAge = now - cachedData.timestamp;
+            if (cacheAge < CACHE_DURATION) {
+                // Use cached data without changing loading state
+                setFlights(cachedData.flights);
+                setError(null);
+                return;
+            }
+        }
+
+        // Prevent concurrent requests
+        if (inFlightRef.current) {
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Request already in flight, skipping');
+            }
+            return;
+        }
+
+        // Rate limiting: prevent too frequent requests
+        const timeSinceLastFetch = now - lastFetchTimeRef.current;
+        if (timeSinceLastFetch < MIN_REQUEST_INTERVAL) {
+            if (process.env.NODE_ENV === 'development') {
+                console.debug('Rate limit: waiting before next request');
+            }
+            // Use cached data for the same bounds if available, without changing loading state
+            if (cachedData && cachedData.bounds === bounds) {
+                setFlights(cachedData.flights);
+                setError(null);
+            }
+            return;
+        }
+
+        inFlightRef.current = true;
         setLoading(true);
         setError(null);
 
@@ -154,10 +198,22 @@ export default function FlightTracker() {
             const validFlights = flightList.filter(isFlightValid);
 
             setFlights(validFlights);
+            
+            // Update cache with fresh timestamp after successful fetch
+            const fetchCompletedTime = Date.now();
+            cachedFlightsRef.current = {
+                bounds,
+                flights: validFlights,
+                timestamp: fetchCompletedTime
+            };
+            
+            // Update last fetch time only after successful response
+            lastFetchTimeRef.current = fetchCompletedTime;
         } catch (err) {
             console.error(err);
             setError(err instanceof Error ? err.message : 'Failed to load flights');
         } finally {
+            inFlightRef.current = false;
             setLoading(false);
         }
     }, []);

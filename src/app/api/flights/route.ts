@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
                 'Accept-Version': 'v1',
                 'Authorization': `Bearer ${API_KEY}`
             },
-            next: { revalidate: 5 }
+            next: { revalidate: 30 }
         });
 
         if (!frResponse.ok) {
