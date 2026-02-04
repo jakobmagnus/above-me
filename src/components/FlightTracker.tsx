@@ -16,7 +16,6 @@ const FlightMap = dynamic(() => import('./FlightMap'), {
     )
 });
 
-const BOUNDS_OFFSET = 0.5;
 const DEFAULT_LAT = 59.6519;
 const DEFAULT_LON = 17.9186;
 
@@ -54,6 +53,11 @@ export default function FlightTracker() {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+    const [mapBounds, setMapBounds] = useState<string | null>(null);
+
+    const handleBoundsChange = useCallback((bounds: string) => {
+        setMapBounds(bounds);
+    }, []);
 
     const handleFlightSelect = useCallback((flight: Flight) => {
         setSelectedFlight(flight);
@@ -121,11 +125,9 @@ export default function FlightTracker() {
         }
     }, []);
 
-    const fetchFlights = useCallback(async (lat: number, lon: number) => {
+    const fetchFlights = useCallback(async (bounds: string) => {
         setLoading(true);
         setError(null);
-
-        const bounds = `${lat + BOUNDS_OFFSET},${lat - BOUNDS_OFFSET},${lon - BOUNDS_OFFSET},${lon + BOUNDS_OFFSET}`;
 
         try {
             const response = await fetch(`/api/flights?bounds=${bounds}`);
@@ -171,28 +173,32 @@ export default function FlightTracker() {
                     setUserLat(lat);
                     setUserLon(lon);
                     fetchLocationName(lat, lon);
-                    fetchFlights(lat, lon);
                 },
                 () => {
                     // Fallback to default
                     setUserLat(DEFAULT_LAT);
                     setUserLon(DEFAULT_LON);
                     setLocationName('Arlanda (default)');
-                    fetchFlights(DEFAULT_LAT, DEFAULT_LON);
                 }
             );
         } else {
             setUserLat(DEFAULT_LAT);
             setUserLon(DEFAULT_LON);
             setLocationName('Arlanda (default)');
-            fetchFlights(DEFAULT_LAT, DEFAULT_LON);
         }
-    }, [fetchLocationName, fetchFlights]);
+    }, [fetchLocationName]);
 
     // Initial load
     useEffect(() => {
         updateLocation();
     }, [updateLocation]);
+
+    // Fetch flights when map bounds change
+    useEffect(() => {
+        if (mapBounds) {
+            fetchFlights(mapBounds);
+        }
+    }, [mapBounds, fetchFlights]);
 
     return (
         <div className="w-full h-screen grid grid-rows-[55vh_1fr] md:grid-rows-1 md:grid-cols-[1fr_380px] overflow-hidden">
@@ -204,6 +210,7 @@ export default function FlightTracker() {
                     flights={flights}
                     onFlightSelect={handleFlightSelect}
                     selectedFlight={selectedFlight}
+                    onBoundsChange={handleBoundsChange}
                 />
             </div>
 

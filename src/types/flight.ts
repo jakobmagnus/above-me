@@ -1,3 +1,21 @@
+export interface FlightTrackPoint {
+    timestamp: string;
+    lat: number;
+    lon: number;
+    alt: number;
+    gspeed: number;
+    vspeed: number;
+    track: number;
+    squawk?: string;
+    callsign?: string;
+    source: string;
+}
+
+export interface FlightTrackResponse {
+    fr24_id: string;
+    tracks: FlightTrackPoint[];
+}
+
 export interface Flight {
     // FR24 API fields
     fr24_id?: string;

@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Flight } from '@/types/flight';
+import { Flight, FlightTrackPoint } from '@/types/flight';
 
 interface FlightMapProps {
     userLat: number;
@@ -11,12 +11,124 @@ interface FlightMapProps {
     flights: Flight[];
     onFlightSelect?: (flight: Flight) => void;
     selectedFlight?: Flight | null;
+    onBoundsChange?: (bounds: string) => void;
 }
 
-export default function FlightMap({ userLat, userLon, flights, onFlightSelect, selectedFlight }: FlightMapProps) {
+export default function FlightMap({ userLat, userLon, flights, onFlightSelect, selectedFlight, onBoundsChange }: FlightMapProps) {
     const mapRef = useRef<L.Map | null>(null);
     const markersRef = useRef<L.Marker[]>([]);
+    const trailRef = useRef<L.Polyline | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [flightTrail, setFlightTrail] = useState<FlightTrackPoint[]>([]);
+    const onBoundsChangeRef = useRef(onBoundsChange);
+
+    // Keep the ref updated
+    useEffect(() => {
+        onBoundsChangeRef.current = onBoundsChange;
+    }, [onBoundsChange]);
+
+    // Fetch flight trail when selectedFlight changes
+    useEffect(() => {
+        // Use fr24_id first, fall back to flight_id
+        const flightId = selectedFlight?.fr24_id || selectedFlight?.flight_id;
+        
+        if (!flightId) {
+            console.log('No flight ID available for trail. Flight data:', selectedFlight);
+            setFlightTrail([]);
+            return;
+        }
+
+        console.log('Fetching trail for flight:', flightId);
+
+        // Create an AbortController to cancel the fetch if the selected flight changes
+        const abortController = new AbortController();
+
+        const fetchTrail = async () => {
+            try {
+                const response = await fetch(`/api/flights/${flightId}/trail`, {
+                    signal: abortController.signal
+                });
+                console.log('Trail API response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Trail data received:', data);
+                    
+                    // Handle both array response [{tracks: [...]}] and object response {tracks: [...]}
+                    const flightData = Array.isArray(data) ? data[0] : data;
+                    let tracks = flightData?.tracks;
+                    
+                    if (tracks && Array.isArray(tracks) && tracks.length > 0) {
+                        // Filter to only show past track points (before current position)
+                        const currentTimestamp = selectedFlight?.timestamp;
+                        if (currentTimestamp) {
+                            const currentTime = new Date(currentTimestamp).getTime();
+                            tracks = tracks.filter((point: FlightTrackPoint) => {
+                                const pointTime = new Date(point.timestamp).getTime();
+                                return pointTime <= currentTime;
+                            });
+                        }
+                        
+                        console.log('Setting trail with', tracks.length, 'points');
+                        setFlightTrail(tracks);
+                    } else {
+                        console.log('No tracks in response. flightData:', flightData);
+                        setFlightTrail([]);
+                    }
+                } else {
+                    console.error('Trail API error:', response.status);
+                    setFlightTrail([]);
+                }
+            } catch (error) {
+                // Ignore AbortError as it's expected when the effect is cleaned up
+                if (error instanceof Error && error.name === 'AbortError') {
+                    console.log('Fetch aborted for flight:', flightId);
+                    return;
+                }
+                console.error('Failed to fetch flight trail:', error);
+                setFlightTrail([]);
+            }
+        };
+
+        fetchTrail();
+
+        // Cleanup function to abort the fetch if the selected flight changes
+        return () => {
+            abortController.abort();
+        };
+    }, [selectedFlight?.fr24_id, selectedFlight?.flight_id, selectedFlight]);
+
+    // Update trail on map when flightTrail changes
+    useEffect(() => {
+        const map = mapRef.current;
+        console.log('Trail effect - map exists:', !!map, 'trail points:', flightTrail.length);
+        
+        if (!map) return;
+
+        // Remove existing trail
+        if (trailRef.current) {
+            map.removeLayer(trailRef.current);
+            trailRef.current = null;
+        }
+
+        // Add new trail if we have track points
+        if (flightTrail.length > 1) {
+            console.log('Drawing trail with', flightTrail.length, 'points');
+            const latlngs: L.LatLngExpression[] = flightTrail.map(point => [point.lat, point.lon]);
+            console.log('First point:', latlngs[0], 'Last point:', latlngs[latlngs.length - 1]);
+            
+            const trail = L.polyline(latlngs, {
+                color: '#facc15',
+                weight: 3,
+                opacity: 0.8,
+                dashArray: '8, 4',
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+
+            trailRef.current = trail;
+        }
+    }, [flightTrail]);
 
     // Initialize map
     useEffect(() => {
@@ -39,6 +151,22 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         }).addTo(map).bindPopup("You");
 
         mapRef.current = map;
+
+        // Emit bounds on map move/zoom
+        const emitBounds = () => {
+            const bounds = map.getBounds();
+            const boundsStr = `${bounds.getNorth()},${bounds.getSouth()},${bounds.getWest()},${bounds.getEast()}`;
+            if (onBoundsChangeRef.current) {
+                onBoundsChangeRef.current(boundsStr);
+            }
+        };
+
+        // Emit initial bounds after map is ready
+        setTimeout(() => emitBounds(), 100);
+
+        // Listen for map movement
+        map.on('moveend', emitBounds);
+        map.on('zoomend', emitBounds);
 
         // Handle resize
         const handleResize = () => {
