@@ -177,8 +177,9 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
 
         window.addEventListener('resize', handleResize);
         
-        // Single initial invalidate after a short delay
-        setTimeout(() => handleResize(), 150);
+        // Single initial invalidate after a short delay to ensure DOM is ready
+        const MAP_INIT_DELAY_MS = 150;
+        setTimeout(() => handleResize(), MAP_INIT_DELAY_MS);
 
         return () => {
             window.removeEventListener('resize', handleResize);
