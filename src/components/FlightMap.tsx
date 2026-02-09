@@ -168,21 +168,34 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         map.on('moveend', emitBounds);
         map.on('zoomend', emitBounds);
 
-        // Handle resize with debounced single timeout
+        // Handle resize with debounced timeout
+        let resizeTimeout: NodeJS.Timeout | null = null;
         const handleResize = () => {
-            if (mapRef.current) {
-                mapRef.current.invalidateSize(true);
+            if (resizeTimeout) {
+                clearTimeout(resizeTimeout);
             }
+            resizeTimeout = setTimeout(() => {
+                if (mapRef.current) {
+                    mapRef.current.invalidateSize(true);
+                }
+            }, 150);
         };
 
         window.addEventListener('resize', handleResize);
         
         // Single initial invalidate after a short delay to ensure DOM is ready
-        const MAP_INIT_DELAY_MS = 150;
-        setTimeout(() => handleResize(), MAP_INIT_DELAY_MS);
+        const initTimeout = setTimeout(() => {
+            if (mapRef.current) {
+                mapRef.current.invalidateSize(true);
+            }
+        }, 150);
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            if (resizeTimeout) {
+                clearTimeout(resizeTimeout);
+            }
+            clearTimeout(initTimeout);
             if (mapRef.current) {
                 mapRef.current.remove();
                 mapRef.current = null;
@@ -280,6 +293,16 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
                 existingMarker.setLatLng([lat, lon]);
                 existingMarker.setIcon(createFlightIcon(heading, isSelected));
                 existingMarker.setPopupContent(`<b>${flightNum}</b><br>${orig} to ${dest}`);
+                
+                // Update click handler to avoid stale closure over old flight data
+                existingMarker.off('click');
+                existingMarker.on('click', () => {
+                    if (onFlightSelect) {
+                        // Look up the latest flight data by ID to avoid stale closures
+                        const latestFlight = flightMap.get(flightId);
+                        onFlightSelect(latestFlight || flight);
+                    }
+                });
             } else {
                 // Create new marker
                 const icon = createFlightIcon(heading, isSelected);
@@ -287,10 +310,11 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
                     .bindPopup(`<b>${flightNum}</b><br>${orig} to ${dest}`)
                     .addTo(map);
                 
-                // Add click handler
+                // Add click handler that looks up latest flight data
                 marker.on('click', () => {
                     if (onFlightSelect) {
-                        onFlightSelect(flight);
+                        const latestFlight = flightMap.get(flightId);
+                        onFlightSelect(latestFlight || flight);
                     }
                 });
                 
