@@ -202,6 +202,11 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         const map = mapRef.current;
         if (!map) return;
 
+        // Helper function to get unique flight identifier
+        const getFlightId = (flight: Flight): string => {
+            return flight.flight_id || flight.callsign || flight.flight_number || flight.flight || '';
+        };
+
         // Helper function to create flight icon
         const createFlightIcon = (heading: number, isSelected: boolean) => {
             const color = isSelected ? '#facc15' : '#f97316';
@@ -232,7 +237,7 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         const flightMap = new Map<string, Flight>();
         
         flights.forEach(flight => {
-            const flightId = flight.flight_id || flight.callsign || flight.flight_number || flight.flight || '';
+            const flightId = getFlightId(flight);
             if (flightId) {
                 currentFlightIds.add(flightId);
                 flightMap.set(flightId, flight);
@@ -253,7 +258,7 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         flights.forEach(flight => {
             const lat = flight.lat ?? flight.latitude;
             const lon = flight.lon ?? flight.longitude;
-            const flightId = flight.flight_id || flight.callsign || flight.flight_number || flight.flight || '';
+            const flightId = getFlightId(flight);
             
             if (!flightId || lat == null || lon == null) return;
 
