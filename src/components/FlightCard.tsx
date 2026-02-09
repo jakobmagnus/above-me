@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import { Flight } from '@/types/flight';
 import { calculateFlightProgress } from '@/utils/flightProgress';
 import { getAirportCoordinates } from '@/utils/airportCoordinates';
@@ -10,7 +10,7 @@ interface FlightCardProps {
     onClick?: () => void;
 }
 
-export default function FlightCard({ flight, onClick }: FlightCardProps) {
+function FlightCard({ flight, onClick }: FlightCardProps) {
     const [logoLoaded, setLogoLoaded] = useState(false);
     const [logoError, setLogoError] = useState(false);
 
@@ -22,53 +22,55 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
     // Aircraft type from API
     const aircraftType = flight.type || '';
     
-    // Get airport info for city names
-    const originAirportInfo = getAirportCoordinates(originCode);
-    const destAirportInfo = getAirportCoordinates(destCode);
+    // Get airport info for city names - memoized to prevent redundant lookups
+    const originAirportInfo = useMemo(() => getAirportCoordinates(originCode), [originCode]);
+    const destAirportInfo = useMemo(() => getAirportCoordinates(destCode), [destCode]);
     
     const originCity = flight.origin_city || flight.origin_airport_name || originAirportInfo?.city || '';
     const destCity = flight.destination_city || flight.destination_airport_name || destAirportInfo?.city || '';
 
-    // Calculate flight progress
-    const currentLat = flight.lat ?? flight.latitude;
-    const currentLon = flight.lon ?? flight.longitude;
-    
-    // Get origin and destination coordinates from API or lookup
-    let originLat = flight.origin_lat;
-    let originLon = flight.origin_lon;
-    let destLat = flight.dest_lat;
-    let destLon = flight.dest_lon;
+    // Calculate flight progress - memoized to avoid expensive haversine calculations on every render
+    const progress = useMemo(() => {
+        const currentLat = flight.lat ?? flight.latitude;
+        const currentLon = flight.lon ?? flight.longitude;
+        
+        // Get origin and destination coordinates from API or lookup
+        let originLat = flight.origin_lat;
+        let originLon = flight.origin_lon;
+        let destLat = flight.dest_lat;
+        let destLon = flight.dest_lon;
 
-    // If coordinates not in flight data, look them up by IATA code
-    if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
-        const originCoords = getAirportCoordinates(originCode);
-        if (originCoords) {
-            originLat = originCoords.lat;
-            originLon = originCoords.lon;
+        // If coordinates not in flight data, look them up by IATA code (use memoized info)
+        if ((originLat === undefined || originLon === undefined) && originCode && originCode !== '---') {
+            if (originAirportInfo) {
+                originLat = originAirportInfo.lat;
+                originLon = originAirportInfo.lon;
+            }
         }
-    }
 
-    if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
-        const destCoords = getAirportCoordinates(destCode);
-        if (destCoords) {
-            destLat = destCoords.lat;
-            destLon = destCoords.lon;
+        if ((destLat === undefined || destLon === undefined) && destCode && destCode !== '---') {
+            if (destAirportInfo) {
+                destLat = destAirportInfo.lat;
+                destLon = destAirportInfo.lon;
+            }
         }
-    }
 
-    let progressPercentage: number | null = null;
-    if (currentLat !== undefined && currentLon !== undefined &&
-        originLat !== undefined && originLon !== undefined &&
-        destLat !== undefined && destLon !== undefined) {
-        progressPercentage = calculateFlightProgress(
-            currentLat, currentLon,
-            originLat, originLon,
-            destLat, destLon
-        );
-    }
+        let progressPercentage: number | null = null;
+        if (currentLat !== undefined && currentLon !== undefined &&
+            originLat !== undefined && originLon !== undefined &&
+            destLat !== undefined && destLon !== undefined) {
+            progressPercentage = calculateFlightProgress(
+                currentLat, currentLon,
+                originLat, originLon,
+                destLat, destLon
+            );
+        }
 
-    // Default to 40% if we can't calculate progress
-    const progress = progressPercentage !== null ? progressPercentage : 40;
+        // Default to 40% if we can't calculate progress
+        return progressPercentage !== null ? progressPercentage : 40;
+    }, [flight.lat, flight.latitude, flight.lon, flight.longitude, 
+        flight.origin_lat, flight.origin_lon, flight.dest_lat, flight.dest_lon,
+        originCode, destCode, originAirportInfo, destAirportInfo]);
 
     // Extract airline code - prefer painted_as/operating_as from FR24 API
     let airlineCode = flight.painted_as || flight.operating_as || flight.airline_iata || flight.airline_icao;
@@ -172,3 +174,6 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
         </button>
     );
 }
+
+// Memoize component to prevent unnecessary re-renders when parent updates
+export default memo(FlightCard);

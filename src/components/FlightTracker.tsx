@@ -78,6 +78,7 @@ export default function FlightTracker() {
             return;
         }
 
+        // Normalize once before the loop
         const selectedId = normalizeValue(
             selectedFlight.callsign ||
             selectedFlight.flight_number ||
@@ -91,6 +92,7 @@ export default function FlightTracker() {
         }
 
         const updatedFlight = flights.find((flight) => {
+            // Normalize once per flight in the loop
             const currentId = normalizeValue(
                 flight.callsign ||
                 flight.flight_number ||
