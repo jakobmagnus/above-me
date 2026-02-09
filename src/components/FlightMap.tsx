@@ -201,6 +201,27 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         const map = mapRef.current;
         if (!map) return;
 
+        // Helper function to create flight icon
+        const createFlightIcon = (heading: number, isSelected: boolean) => {
+            const color = isSelected ? '#facc15' : '#f97316';
+            const size = isSelected ? 28 : 20;
+            const iconSize = isSelected ? 32 : 24;
+            
+            const htmlIcon = `
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg);">
+                    <svg style="width: ${size}px; height: ${size}px; color: ${color}; filter: drop-shadow(0 0 ${isSelected ? '6px rgba(250, 204, 21, 0.8)' : '3px rgba(0,0,0,0.8)'});" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+                    </svg>
+                </div>`;
+            
+            return L.divIcon({
+                html: htmlIcon,
+                className: 'plane-marker',
+                iconSize: [iconSize, iconSize],
+                iconAnchor: [iconSize / 2, iconSize / 2]
+            });
+        };
+
         // Get selected flight ID for comparison
         const selectedFlightId = selectedFlight?.flight_id;
         const selectedCallsign = selectedFlight?.callsign || selectedFlight?.flight_number || selectedFlight?.flight;
@@ -241,56 +262,21 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
             const dest = flight.dest_iata || flight.destination_airport_iata || '?';
 
             // Check if this flight is selected
-            const isSelected = (selectedFlightId && flight.flight_id === selectedFlightId) ||
-                (selectedCallsign && (flight.callsign === selectedCallsign || flight.flight_number === selectedCallsign || flight.flight === selectedCallsign));
+            const isSelected = Boolean(
+                (selectedFlightId && flight.flight_id === selectedFlightId) ||
+                (selectedCallsign && (flight.callsign === selectedCallsign || flight.flight_number === selectedCallsign || flight.flight === selectedCallsign))
+            );
 
             const existingMarker = markersRef.current.get(flightId);
             
             if (existingMarker) {
                 // Update existing marker position and appearance
                 existingMarker.setLatLng([lat, lon]);
-                
-                // Update icon if selection state changed
-                const color = isSelected ? '#facc15' : '#f97316';
-                const size = isSelected ? 28 : 20;
-                const iconSize = isSelected ? 32 : 24;
-                
-                const htmlIcon = `
-                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg);">
-                        <svg style="width: ${size}px; height: ${size}px; color: ${color}; filter: drop-shadow(0 0 ${isSelected ? '6px rgba(250, 204, 21, 0.8)' : '3px rgba(0,0,0,0.8)'});" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-                        </svg>
-                    </div>`;
-                
-                const icon = L.divIcon({
-                    html: htmlIcon,
-                    className: 'plane-marker',
-                    iconSize: [iconSize, iconSize],
-                    iconAnchor: [iconSize / 2, iconSize / 2]
-                });
-                
-                existingMarker.setIcon(icon);
+                existingMarker.setIcon(createFlightIcon(heading, isSelected));
                 existingMarker.setPopupContent(`<b>${flightNum}</b><br>${orig} to ${dest}`);
             } else {
                 // Create new marker
-                const color = isSelected ? '#facc15' : '#f97316';
-                const size = isSelected ? 28 : 20;
-                const iconSize = isSelected ? 32 : 24;
-                
-                const htmlIcon = `
-                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg);">
-                        <svg style="width: ${size}px; height: ${size}px; color: ${color}; filter: drop-shadow(0 0 ${isSelected ? '6px rgba(250, 204, 21, 0.8)' : '3px rgba(0,0,0,0.8)'});" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-                        </svg>
-                    </div>`;
-
-                const icon = L.divIcon({
-                    html: htmlIcon,
-                    className: 'plane-marker',
-                    iconSize: [iconSize, iconSize],
-                    iconAnchor: [iconSize / 2, iconSize / 2]
-                });
-
+                const icon = createFlightIcon(heading, isSelected);
                 const marker = L.marker([lat, lon], { icon })
                     .bindPopup(`<b>${flightNum}</b><br>${orig} to ${dest}`)
                     .addTo(map);
