@@ -125,6 +125,49 @@ const AIRPORT_TIMEZONES: Record<string, string> = {
     'BMA': 'UTC+1',
 };
 
+// Airline name mapping
+const AIRLINE_NAMES: Record<string, string> = {
+    'SK': 'SAS',
+    'AY': 'Finnair',
+    'DY': 'Norwegian',
+    'FR': 'Ryanair',
+    'BA': 'British Airways',
+    'LH': 'Lufthansa',
+    'AF': 'Air France',
+    'KL': 'KLM',
+    'IB': 'Iberia',
+    'AZ': 'ITA Airways',
+    'LX': 'SWISS',
+    'OS': 'Austrian',
+    'SN': 'Brussels Airlines',
+    'EI': 'Aer Lingus',
+    'TP': 'TAP Portugal',
+    'TK': 'Turkish Airlines',
+    'EK': 'Emirates',
+    'QR': 'Qatar Airways',
+    'EY': 'Etihad',
+    'AA': 'American Airlines',
+    'UA': 'United Airlines',
+    'DL': 'Delta Air Lines',
+    'WN': 'Southwest',
+    'AS': 'Alaska Airlines',
+    'AC': 'Air Canada',
+    'QF': 'Qantas',
+    'NZ': 'Air New Zealand',
+    'SQ': 'Singapore Airlines',
+    'CX': 'Cathay Pacific',
+    'JL': 'Japan Airlines',
+    'NH': 'ANA',
+    'KE': 'Korean Air',
+    'OZ': 'Asiana',
+    'CA': 'Air China',
+    'MU': 'China Eastern',
+    'W6': 'Wizz Air',
+    'U2': 'easyJet',
+    'VY': 'Vueling',
+    'D8': 'Norwegian',
+};
+
 function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -197,49 +240,6 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
             airlineCode = match[1];
         }
     }
-
-    // Get airline name from code
-    const AIRLINE_NAMES: Record<string, string> = {
-        'SK': 'SAS',
-        'AY': 'Finnair',
-        'DY': 'Norwegian',
-        'FR': 'Ryanair',
-        'BA': 'British Airways',
-        'LH': 'Lufthansa',
-        'AF': 'Air France',
-        'KL': 'KLM',
-        'IB': 'Iberia',
-        'AZ': 'ITA Airways',
-        'LX': 'SWISS',
-        'OS': 'Austrian',
-        'SN': 'Brussels Airlines',
-        'EI': 'Aer Lingus',
-        'TP': 'TAP Portugal',
-        'TK': 'Turkish Airlines',
-        'EK': 'Emirates',
-        'QR': 'Qatar Airways',
-        'EY': 'Etihad',
-        'AA': 'American Airlines',
-        'UA': 'United Airlines',
-        'DL': 'Delta Air Lines',
-        'WN': 'Southwest',
-        'AS': 'Alaska Airlines',
-        'AC': 'Air Canada',
-        'QF': 'Qantas',
-        'NZ': 'Air New Zealand',
-        'SQ': 'Singapore Airlines',
-        'CX': 'Cathay Pacific',
-        'JL': 'Japan Airlines',
-        'NH': 'ANA',
-        'KE': 'Korean Air',
-        'OZ': 'Asiana',
-        'CA': 'Air China',
-        'MU': 'China Eastern',
-        'W6': 'Wizz Air',
-        'U2': 'easyJet',
-        'VY': 'Vueling',
-        'D8': 'Norwegian',
-    };
 
     const airlineName = airlineCode ? AIRLINE_NAMES[airlineCode] || airlineCode : 'Unknown Airline';
     const airlineCountry = airlineCode ? AIRLINE_COUNTRIES[airlineCode] : null;

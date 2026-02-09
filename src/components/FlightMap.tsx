@@ -16,7 +16,7 @@ interface FlightMapProps {
 
 export default function FlightMap({ userLat, userLon, flights, onFlightSelect, selectedFlight, onBoundsChange }: FlightMapProps) {
     const mapRef = useRef<L.Map | null>(null);
-    const markersRef = useRef<L.Marker[]>([]);
+    const markersRef = useRef<Map<string, L.Marker>>(new Map()); // Changed to Map for efficient lookups
     const trailRef = useRef<L.Polyline | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [flightTrail, setFlightTrail] = useState<FlightTrackPoint[]>([]);
@@ -168,7 +168,7 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         map.on('moveend', emitBounds);
         map.on('zoomend', emitBounds);
 
-        // Handle resize
+        // Handle resize with debounced single timeout
         const handleResize = () => {
             if (mapRef.current) {
                 mapRef.current.invalidateSize(true);
@@ -177,9 +177,8 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
 
         window.addEventListener('resize', handleResize);
         
-        // Initial invalidate
-        setTimeout(() => handleResize(), 100);
-        setTimeout(() => handleResize(), 500);
+        // Single initial invalidate after a short delay
+        setTimeout(() => handleResize(), 150);
 
         return () => {
             window.removeEventListener('resize', handleResize);
@@ -197,23 +196,45 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
         }
     }, [userLat, userLon]);
 
-    // Update markers when flights change
+    // Update markers when flights change - optimized with delta updates
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
-
-        // Remove old markers
-        markersRef.current.forEach(m => map.removeLayer(m));
-        markersRef.current = [];
 
         // Get selected flight ID for comparison
         const selectedFlightId = selectedFlight?.flight_id;
         const selectedCallsign = selectedFlight?.callsign || selectedFlight?.flight_number || selectedFlight?.flight;
 
-        // Add new markers
+        // Create a set of current flight IDs for efficient lookup
+        const currentFlightIds = new Set<string>();
+        const flightMap = new Map<string, Flight>();
+        
+        flights.forEach(flight => {
+            const flightId = flight.flight_id || flight.callsign || flight.flight_number || flight.flight || '';
+            if (flightId) {
+                currentFlightIds.add(flightId);
+                flightMap.set(flightId, flight);
+            }
+        });
+
+        // Remove markers for flights that are no longer present
+        const markersToRemove: string[] = [];
+        markersRef.current.forEach((marker, flightId) => {
+            if (!currentFlightIds.has(flightId)) {
+                map.removeLayer(marker);
+                markersToRemove.push(flightId);
+            }
+        });
+        markersToRemove.forEach(id => markersRef.current.delete(id));
+
+        // Add or update markers for current flights
         flights.forEach(flight => {
             const lat = flight.lat ?? flight.latitude;
             const lon = flight.lon ?? flight.longitude;
+            const flightId = flight.flight_id || flight.callsign || flight.flight_number || flight.flight || '';
+            
+            if (!flightId || lat == null || lon == null) return;
+
             const heading = flight.track || flight.heading || 0;
             const flightNum = flight.flight || flight.callsign || flight.flight_number || 'Flight';
             const orig = flight.orig_iata || flight.origin_airport_iata || '?';
@@ -223,9 +244,38 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
             const isSelected = (selectedFlightId && flight.flight_id === selectedFlightId) ||
                 (selectedCallsign && (flight.callsign === selectedCallsign || flight.flight_number === selectedCallsign || flight.flight === selectedCallsign));
 
-            if (lat != null && lon != null) {
-                const color = isSelected ? '#facc15' : '#f97316'; // Yellow when selected, orange otherwise
+            const existingMarker = markersRef.current.get(flightId);
+            
+            if (existingMarker) {
+                // Update existing marker position and appearance
+                existingMarker.setLatLng([lat, lon]);
+                
+                // Update icon if selection state changed
+                const color = isSelected ? '#facc15' : '#f97316';
                 const size = isSelected ? 28 : 20;
+                const iconSize = isSelected ? 32 : 24;
+                
+                const htmlIcon = `
+                    <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg);">
+                        <svg style="width: ${size}px; height: ${size}px; color: ${color}; filter: drop-shadow(0 0 ${isSelected ? '6px rgba(250, 204, 21, 0.8)' : '3px rgba(0,0,0,0.8)'});" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+                        </svg>
+                    </div>`;
+                
+                const icon = L.divIcon({
+                    html: htmlIcon,
+                    className: 'plane-marker',
+                    iconSize: [iconSize, iconSize],
+                    iconAnchor: [iconSize / 2, iconSize / 2]
+                });
+                
+                existingMarker.setIcon(icon);
+                existingMarker.setPopupContent(`<b>${flightNum}</b><br>${orig} to ${dest}`);
+            } else {
+                // Create new marker
+                const color = isSelected ? '#facc15' : '#f97316';
+                const size = isSelected ? 28 : 20;
+                const iconSize = isSelected ? 32 : 24;
                 
                 const htmlIcon = `
                     <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: rotate(${heading}deg);">
@@ -234,7 +284,6 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
                         </svg>
                     </div>`;
 
-                const iconSize = isSelected ? 32 : 24;
                 const icon = L.divIcon({
                     html: htmlIcon,
                     className: 'plane-marker',
@@ -253,7 +302,7 @@ export default function FlightMap({ userLat, userLon, flights, onFlightSelect, s
                     }
                 });
                 
-                markersRef.current.push(marker);
+                markersRef.current.set(flightId, marker);
             }
         });
     }, [flights, selectedFlight, onFlightSelect]);
