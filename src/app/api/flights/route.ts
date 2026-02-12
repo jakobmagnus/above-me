@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockFlights } from '@/utils/mockFlightData';
+import { transformFlightData } from '@/utils/flightDataTransform';
 
 // Helper function to return mock flights with updated timestamps
 function getMockFlights() {
     const currentTime = new Date().toISOString();
-    return mockFlights.map(flight => ({
+    const flightsWithTimestamp = mockFlights.map(flight => ({
         ...flight,
         timestamp: currentTime
     }));
+    return transformFlightData(flightsWithTimestamp);
 }
 
 export async function GET(request: NextRequest) {
@@ -71,7 +73,9 @@ export async function GET(request: NextRequest) {
         }
 
         const data = await frResponse.json();
-        return NextResponse.json(data);
+        // Transform the flight data (e.g., decode vertical speed)
+        const transformedData = Array.isArray(data) ? transformFlightData(data) : data;
+        return NextResponse.json(transformedData);
 
     } catch (error) {
         console.error("API Error:", error);
