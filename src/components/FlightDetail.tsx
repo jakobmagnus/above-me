@@ -304,8 +304,7 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
     // Format vertical speed
     const formatVerticalSpeed = (vspeed: number): string => {
         if (vspeed === 0) return '0';
-        const sign = vspeed > 0 ? '+' : '';
-        return `${sign}${vspeed.toLocaleString('en-US')}`;
+        return `${vspeed.toLocaleString('en-US')}`;
     };
 
     return (
@@ -443,7 +442,7 @@ export default function FlightDetail({ flight, onClose }: FlightDetailProps) {
                         </div>
                         <div className="bg-[#1a1a1a] rounded-lg px-4 py-3">
                             <span className="text-gray-400 text-xs block">Vertical Speed</span>
-                            <span className={`text-sm font-medium ${verticalSpeed > 0 ? 'text-green-400' : verticalSpeed < 0 ? 'text-orange-400' : 'text-white'}`}>
+                            <span className={`text-sm font-medium ${verticalSpeed < 0 ? 'text-orange-400' : 'text-white'}`}>
                                 {formatVerticalSpeed(verticalSpeed)} ft/min
                             </span>
                         </div>
