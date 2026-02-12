@@ -10,7 +10,9 @@ export async function GET(request: NextRequest) {
     }
 
     const API_KEY = process.env.FLIGHTRADAR24_API_KEY;
-    const USE_MOCK_DATA = process.env.USE_MOCK_FLIGHT_DATA === 'true' || process.env.NODE_ENV === 'development';
+    // Use mock data if explicitly enabled, or in development mode (unless explicitly disabled)
+    const USE_MOCK_DATA = process.env.USE_MOCK_FLIGHT_DATA === 'true' || 
+        (process.env.NODE_ENV === 'development' && process.env.USE_MOCK_FLIGHT_DATA !== 'false');
     
     // In development, if no API key is set, use mock data
     if (!API_KEY) {
@@ -45,7 +47,7 @@ export async function GET(request: NextRequest) {
             console.error(`FR24 API Error: ${frResponse.status} - ${errText}`);
             
             // In development, fall back to mock data on API errors
-            if (USE_MOCK_DATA && process.env.NODE_ENV === 'development') {
+            if (USE_MOCK_DATA) {
                 console.log("📍 Falling back to mock flight data due to API error");
                 return NextResponse.json(mockFlights);
             }
@@ -63,7 +65,7 @@ export async function GET(request: NextRequest) {
         console.error("API Error:", error);
         
         // In development, fall back to mock data on network errors
-        if (USE_MOCK_DATA && process.env.NODE_ENV === 'development') {
+        if (USE_MOCK_DATA) {
             console.log("📍 Falling back to mock flight data due to network error");
             return NextResponse.json(mockFlights);
         }
