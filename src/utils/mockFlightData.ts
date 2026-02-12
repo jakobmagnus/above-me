@@ -1,6 +1,7 @@
 import { Flight } from '@/types/flight';
 
 // Mock flight data for development/testing when API is unavailable
+// Note: timestamps are generated dynamically when this data is returned from the API
 export const mockFlights: Flight[] = [
     {
         flight_id: 'mock-1',
@@ -24,8 +25,7 @@ export const mockFlights: Flight[] = [
         dest_iata: 'CPH',
         airline_iata: 'SK',
         airline_icao: 'SAS',
-        fr24_id: 'mock-fr24-1',
-        timestamp: new Date().toISOString()
+        fr24_id: 'mock-fr24-1'
     },
     {
         flight_id: 'mock-2',
@@ -49,8 +49,7 @@ export const mockFlights: Flight[] = [
         dest_iata: 'ARN',
         airline_iata: 'LH',
         airline_icao: 'DLH',
-        fr24_id: 'mock-fr24-2',
-        timestamp: new Date().toISOString()
+        fr24_id: 'mock-fr24-2'
     },
     {
         flight_id: 'mock-3',
@@ -74,8 +73,7 @@ export const mockFlights: Flight[] = [
         dest_iata: 'ARN',
         airline_iata: 'DY',
         airline_icao: 'NAX',
-        fr24_id: 'mock-fr24-3',
-        timestamp: new Date().toISOString()
+        fr24_id: 'mock-fr24-3'
     },
     {
         flight_id: 'mock-4',
@@ -99,7 +97,6 @@ export const mockFlights: Flight[] = [
         dest_iata: 'ARN',
         airline_iata: 'BA',
         airline_icao: 'BAW',
-        fr24_id: 'mock-fr24-4',
-        timestamp: new Date().toISOString()
+        fr24_id: 'mock-fr24-4'
     }
 ];

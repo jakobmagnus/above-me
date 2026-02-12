@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mockFlights } from '@/utils/mockFlightData';
 
+// Helper function to return mock flights with updated timestamps
+function getMockFlights() {
+    const currentTime = new Date().toISOString();
+    return mockFlights.map(flight => ({
+        ...flight,
+        timestamp: currentTime
+    }));
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const bounds = searchParams.get('bounds');
@@ -10,9 +19,12 @@ export async function GET(request: NextRequest) {
     }
 
     const API_KEY = process.env.FLIGHTRADAR24_API_KEY;
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const mockDataExplicitlyEnabled = process.env.USE_MOCK_FLIGHT_DATA === 'true';
+    const mockDataExplicitlyDisabled = process.env.USE_MOCK_FLIGHT_DATA === 'false';
+    
     // Use mock data if explicitly enabled, or in development mode (unless explicitly disabled)
-    const USE_MOCK_DATA = process.env.USE_MOCK_FLIGHT_DATA === 'true' || 
-        (process.env.NODE_ENV === 'development' && process.env.USE_MOCK_FLIGHT_DATA !== 'false');
+    const USE_MOCK_DATA = mockDataExplicitlyEnabled || (isDevelopment && !mockDataExplicitlyDisabled);
     
     // In development, if no API key is set, use mock data
     if (!API_KEY) {
@@ -20,7 +32,7 @@ export async function GET(request: NextRequest) {
         
         if (USE_MOCK_DATA) {
             console.log("📍 Using mock flight data for development");
-            return NextResponse.json(mockFlights);
+            return NextResponse.json(getMockFlights());
         }
         
         console.error("❌ API key not configured and mock data disabled");
@@ -49,7 +61,7 @@ export async function GET(request: NextRequest) {
             // In development, fall back to mock data on API errors
             if (USE_MOCK_DATA) {
                 console.log("📍 Falling back to mock flight data due to API error");
-                return NextResponse.json(mockFlights);
+                return NextResponse.json(getMockFlights());
             }
             
             return NextResponse.json(
@@ -67,7 +79,7 @@ export async function GET(request: NextRequest) {
         // In development, fall back to mock data on network errors
         if (USE_MOCK_DATA) {
             console.log("📍 Falling back to mock flight data due to network error");
-            return NextResponse.json(mockFlights);
+            return NextResponse.json(getMockFlights());
         }
         
         return NextResponse.json(
