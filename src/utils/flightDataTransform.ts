@@ -8,7 +8,7 @@ import { Flight } from '@/types/flight';
  * @returns Actual vertical speed in feet per minute
  */
 export function decodeVerticalSpeed(rawVspeed: number | undefined): number | undefined {
-    if (rawVspeed === undefined || rawVspeed === null) {
+    if (rawVspeed === undefined) {
         return undefined;
     }
     return rawVspeed * 64;
