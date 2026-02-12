@@ -17,6 +17,7 @@ export const mockFlights: Flight[] = [
         altitude: 35000,
         alt: 35000,
         gspeed: 450,
+        vspeed: 0,  // Level flight (0 * 64 = 0 ft/min)
         squawk: '1234',
         type: 'A320',
         registration: 'SE-ABC',
@@ -44,6 +45,7 @@ export const mockFlights: Flight[] = [
         altitude: 28000,
         alt: 28000,
         gspeed: 420,
+        vspeed: -8,  // Descending (-8 * 64 = -512 ft/min)
         squawk: '2345',
         type: 'B738',
         registration: 'D-ABCD',
@@ -71,6 +73,7 @@ export const mockFlights: Flight[] = [
         altitude: 32000,
         alt: 32000,
         gspeed: 440,
+        vspeed: 25,  // Climbing (25 * 64 = 1600 ft/min)
         squawk: '3456',
         type: 'B737',
         registration: 'LN-XYZ',
@@ -98,6 +101,7 @@ export const mockFlights: Flight[] = [
         altitude: 38000,
         alt: 38000,
         gspeed: 480,
+        vspeed: -3,  // Slight descent (-3 * 64 = -192 ft/min)
         squawk: '4567',
         type: 'A321',
         registration: 'G-EFGH',
